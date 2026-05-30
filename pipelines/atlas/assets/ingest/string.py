@@ -30,8 +30,7 @@ ALIASES_URL = (
     f"{_SPECIES}.protein.aliases.v{STRING_VERSION}.txt.gz"
 )
 LINKS_URL = (
-    f"{_DL_BASE}/protein.links.v{STRING_VERSION}/"
-    f"{_SPECIES}.protein.links.v{STRING_VERSION}.txt.gz"
+    f"{_DL_BASE}/protein.links.v{STRING_VERSION}/{_SPECIES}.protein.links.v{STRING_VERSION}.txt.gz"
 )
 SCORE_THRESHOLD = 700
 R2_KEY = f"string/v{STRING_VERSION}/string_interactions.parquet"

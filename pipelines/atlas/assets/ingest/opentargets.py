@@ -52,9 +52,7 @@ def list_parts(client: httpx.Client, dataset_url: str) -> list[str]:
     return re.findall(r'href="(part-[^"]+\.parquet)"', resp.text)
 
 
-def fetch_dataset(
-    client: httpx.Client, dataset: str, columns: list[str]
-) -> pl.DataFrame:
+def fetch_dataset(client: httpx.Client, dataset: str, columns: list[str]) -> pl.DataFrame:
     """Download all Parquet parts for one OT dataset, select columns, concatenate.
 
     Raises ``RuntimeError`` if no part files are found (wrong version or dataset
@@ -82,9 +80,7 @@ def fetch_dataset(
 
 
 @asset(group_name="ingest", compute_kind="python")
-def ot_targets_raw(
-    context: AssetExecutionContext, r2: R2Resource
-) -> MaterializeResult[Any]:
+def ot_targets_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeResult[Any]:
     """Open Targets target metadata -> Bronze Parquet.
 
     Produces: Parquet with Ensembl gene IDs, approved symbol/name, and proteinIds
@@ -109,9 +105,7 @@ def ot_targets_raw(
 
 
 @asset(group_name="ingest", compute_kind="python")
-def ot_diseases_raw(
-    context: AssetExecutionContext, r2: R2Resource
-) -> MaterializeResult[Any]:
+def ot_diseases_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeResult[Any]:
     """Open Targets disease ontology -> Bronze Parquet.
 
     Produces: Parquet with EFO disease IDs, display names, and therapeutic areas.
@@ -135,9 +129,7 @@ def ot_diseases_raw(
 
 
 @asset(group_name="ingest", compute_kind="python")
-def ot_associations_raw(
-    context: AssetExecutionContext, r2: R2Resource
-) -> MaterializeResult[Any]:
+def ot_associations_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeResult[Any]:
     """Open Targets gene-disease associations -> Bronze Parquet.
 
     Produces: Parquet of (targetId, diseaseId, score) triples from
@@ -151,9 +143,7 @@ def ot_associations_raw(
         df = fetch_dataset(client, "associationByOverallDirect", OT_ASSOCIATIONS_COLUMNS)
 
     r2.write_parquet(df, key)
-    context.log.info(
-        "Wrote %d OT association rows to r2://%s/%s", df.height, r2.bucket, key
-    )
+    context.log.info("Wrote %d OT association rows to r2://%s/%s", df.height, r2.bucket, key)
     return MaterializeResult(
         metadata={
             "num_records": MetadataValue.int(df.height),
@@ -165,9 +155,7 @@ def ot_associations_raw(
 
 
 @asset(group_name="ingest", compute_kind="python")
-def ot_drugs_raw(
-    context: AssetExecutionContext, r2: R2Resource
-) -> MaterializeResult[Any]:
+def ot_drugs_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeResult[Any]:
     """Open Targets known drugs -> Bronze Parquet.
 
     Produces: Parquet of drug-target-disease triples from ``knownDrugsAggregated``

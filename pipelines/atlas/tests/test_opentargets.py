@@ -102,8 +102,9 @@ def testfetch_dataset_raises_when_no_parts_found() -> None:
         return httpx.Response(200, content=b"<html><body></body></html>")
 
     transport = httpx.MockTransport(handler)
-    with httpx.Client(transport=transport) as client, pytest.raises(
-        RuntimeError, match="No Parquet parts found"
+    with (
+        httpx.Client(transport=transport) as client,
+        pytest.raises(RuntimeError, match="No Parquet parts found"),
     ):
         fetch_dataset(client, "bogusDataset", OT_ASSOCIATIONS_COLUMNS)
 
@@ -111,12 +112,14 @@ def testfetch_dataset_raises_when_no_parts_found() -> None:
 def testfetch_dataset_selects_only_requested_columns() -> None:
     # Part file has extra columns that should be dropped.
     part = _parquet_bytes(
-        pl.DataFrame({
-            "targetId": ["ENSG1"],
-            "diseaseId": ["EFO_1"],
-            "score": [0.8],
-            "extra_column": ["should_be_dropped"],
-        })
+        pl.DataFrame(
+            {
+                "targetId": ["ENSG1"],
+                "diseaseId": ["EFO_1"],
+                "score": [0.8],
+                "extra_column": ["should_be_dropped"],
+            }
+        )
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -141,13 +144,15 @@ def testfetch_dataset_selects_only_requested_columns() -> None:
 def test_targets_dataset_columns_are_present() -> None:
     # Verifies that the expected OT targets columns are selected when present.
     part = _parquet_bytes(
-        pl.DataFrame({
-            "id": ["ENSG00000254647"],
-            "approvedSymbol": ["INS"],
-            "approvedName": ["insulin"],
-            "proteinIds": [None],  # complex nested type simplified for fixture
-            "extra": ["drop_me"],
-        })
+        pl.DataFrame(
+            {
+                "id": ["ENSG00000254647"],
+                "approvedSymbol": ["INS"],
+                "approvedName": ["insulin"],
+                "proteinIds": [None],  # complex nested type simplified for fixture
+                "extra": ["drop_me"],
+            }
+        )
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -167,14 +172,16 @@ def test_targets_dataset_columns_are_present() -> None:
 
 def test_drugs_dataset_columns_are_present() -> None:
     part = _parquet_bytes(
-        pl.DataFrame({
-            "drugId": ["CHEMBL1201631"],
-            "prefName": ["INSULIN HUMAN"],
-            "targetId": ["ENSG00000254647"],
-            "diseaseId": ["EFO_0001359"],
-            "phase": [4],
-            "mechanismOfAction": ["Insulin receptor agonist"],
-        })
+        pl.DataFrame(
+            {
+                "drugId": ["CHEMBL1201631"],
+                "prefName": ["INSULIN HUMAN"],
+                "targetId": ["ENSG00000254647"],
+                "diseaseId": ["EFO_0001359"],
+                "phase": [4],
+                "mechanismOfAction": ["Insulin receptor agonist"],
+            }
+        )
     )
 
     def handler(request: httpx.Request) -> httpx.Response:

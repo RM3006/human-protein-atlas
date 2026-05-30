@@ -81,9 +81,7 @@ def parse_hpa_tsv(content: bytes) -> pl.DataFrame:
 
 
 @asset(group_name="ingest", compute_kind="python")
-def hpa_proteome_raw(
-    context: AssetExecutionContext, r2: R2Resource
-) -> MaterializeResult[Any]:
+def hpa_proteome_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeResult[Any]:
     """Human Protein Atlas proteome summary -> Bronze Parquet.
 
     Produces: Parquet with tissue expression, subcellular location, protein class,
@@ -99,9 +97,7 @@ def hpa_proteome_raw(
     with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
         tsv_names = [n for n in zf.namelist() if n.endswith(".tsv")]
         if not tsv_names:
-            raise RuntimeError(
-                f"No .tsv file found inside HPA zip. Contents: {zf.namelist()}"
-            )
+            raise RuntimeError(f"No .tsv file found inside HPA zip. Contents: {zf.namelist()}")
         with zf.open(tsv_names[0]) as tsv:
             content = tsv.read()
 

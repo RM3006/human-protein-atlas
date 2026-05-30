@@ -89,10 +89,7 @@ def teststream_interactions_filters_score_resolves_ids_drops_unmapped() -> None:
 
 
 def teststream_interactions_returns_correct_schema() -> None:
-    links_gz = _gzip_text(
-        "protein1 protein2 combined_score\n"
-        "9606.ENSP1 9606.ENSP2 750\n"
-    )
+    links_gz = _gzip_text("protein1 protein2 combined_score\n9606.ENSP1 9606.ENSP2 750\n")
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=links_gz)
@@ -107,9 +104,7 @@ def teststream_interactions_returns_correct_schema() -> None:
 
 def teststream_interactions_empty_when_all_scores_below_threshold() -> None:
     links_gz = _gzip_text(
-        "protein1 protein2 combined_score\n"
-        "9606.ENSP1 9606.ENSP2 500\n"
-        "9606.ENSP1 9606.ENSP2 300\n"
+        "protein1 protein2 combined_score\n9606.ENSP1 9606.ENSP2 500\n9606.ENSP1 9606.ENSP2 300\n"
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -127,10 +122,7 @@ def teststream_interactions_empty_when_all_scores_below_threshold() -> None:
 def teststream_interactions_round_trips_parquet(tmp_path: Path) -> None:
     # Verify the DataFrame can be serialised to Parquet and read back with
     # the same schema (CLAUDE.md rule 3: Parquet, not CSV, in pipelines).
-    links_gz = _gzip_text(
-        "protein1 protein2 combined_score\n"
-        "9606.ENSP1 9606.ENSP2 850\n"
-    )
+    links_gz = _gzip_text("protein1 protein2 combined_score\n9606.ENSP1 9606.ENSP2 850\n")
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=links_gz)
