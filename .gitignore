@@ -1,0 +1,41 @@
+# Secrets
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Tooling caches
+.ruff_cache/
+.pytest_cache/
+.pyright/
+.mypy_cache/
+
+# uv
+# (uv.lock IS committed; the venv is not)
+
+# Dagster
+.dagster/
+dagster_home/
+tmp*/
+*.tmp
+
+# OpenTofu / Terraform (.terraform.lock.hcl IS committed to pin providers)
+infra/**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

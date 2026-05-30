@@ -1,0 +1,54 @@
+{
+  "primaryAccession": "P01308",
+  "secondaryAccessions": ["Q5EEX2"],
+  "uniProtkbId": "INS_HUMAN",
+  "genes": [{ "geneName": { "value": "INS" } }],
+  "proteinDescription": {
+    "recommendedName": { "fullName": { "value": "Insulin" } }
+  },
+  "sequence": {
+    "value": "MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCGERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSLYQLENYCN",
+    "length": 110,
+    "molWeight": 11981,
+    "crc64": "C887A4F4DC7A9E3C",
+    "md5": "94B6F25E5552C6E3F7C42E5F1F2C8A8B"
+  },
+  "comments": [
+    {
+      "commentType": "FUNCTION",
+      "texts": [
+        {
+          "value": "Insulin decreases blood glucose concentration. It increases cell permeability to monosaccharides, amino acids and fatty acids."
+        }
+      ]
+    },
+    {
+      "commentType": "SUBUNIT",
+      "texts": [{ "value": "Heterodimer of a B chain and an A chain linked by disulfide bonds." }]
+    }
+  ],
+  "keywords": [
+    { "id": "KW-0119", "category": "Disease", "name": "Diabetes mellitus" },
+    { "id": "KW-0372", "category": "Molecular function", "name": "Hormone" }
+  ],
+  "uniProtKBCrossReferences": [
+    {
+      "database": "Pfam",
+      "id": "PF00049",
+      "properties": [{ "key": "EntryName", "value": "Insulin" }]
+    },
+    {
+      "database": "STRING",
+      "id": "9606.ENSP00000250971",
+      "properties": []
+    },
+    {
+      "database": "Ensembl",
+      "id": "ENST00000250971",
+      "properties": [
+        { "key": "ProteinId", "value": "ENSP00000250971" },
+        { "key": "GeneId", "value": "ENSG00000254647" }
+      ]
+    }
+  ]
+}

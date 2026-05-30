@@ -24,14 +24,14 @@ Python 3.11+ · `uv` · `ruff` · `pyright` strict · `pytest` · OpenTofu 1.8+ 
 CLAUDE.md  README.md  ARCHITECTURE.md  ROADMAP.md  SETUP.md  pyproject.toml  .env.example
 docs/        curation list, data-source manifest
 infra/       OpenTofu modules
-pipelines/   Dagster (assets/ingest, assets/transform, assets/ml, resources, tests)
+pipelines/   Dagster project; package `atlas/` (assets/ingest, assets/transform, assets/ml, resources, tests)
 models/      dbt project (sources, staging, marts)
 apps/api/    FastAPI on Modal
 apps/ui/     Streamlit on Community Cloud
 notebooks/   exploratory; never imported elsewhere
 ```
 
-One module per data source under `pipelines/assets/ingest/` (`uniprot.py`, `string.py`, `hpa.py`, `opentargets.py`).
+One module per data source under `pipelines/atlas/assets/ingest/` (`uniprot.py`, `string.py`, `hpa.py`, `opentargets.py`). The package is imported as `atlas` (e.g. `from atlas.logging import logger`).
 
 ## Conventions
 

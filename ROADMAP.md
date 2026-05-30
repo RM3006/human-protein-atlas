@@ -21,8 +21,6 @@ Pace yourself by **exit criteria, not the calendar**. If you have a free weekend
 
 ## Part 0 — Pre-flight
 
-**Effort**: 1–2 hours.
-
 Before building:
 
 1. Move `protein_atlas_curation_list.md` and `protein_atlas_data_source_manifest.md` into a new `docs/` subfolder.
@@ -34,8 +32,6 @@ Before building:
 ---
 
 ## Part 1 — Foundation + UniProt ingest
-
-**Effort**: 10–15 hours.
 
 **Goal**: the repo skeleton is up, infrastructure is provisioned by code, and UniProt data flows from the internet into object storage.
 
@@ -69,8 +65,6 @@ Before building:
 
 ## Part 2 — Remaining data sources ingested
 
-**Effort**: 12–15 hours.
-
 **Goal**: raw data from all four other public sources lives in R2.
 
 **Deliverables**
@@ -100,8 +94,6 @@ Before building:
 
 ## Part 3 — dbt modeling: Bronze → Silver → Gold
 
-**Effort**: 10–12 hours.
-
 **Goal**: the warehouse star schema from the manifest is built and tested in MotherDuck.
 
 **Deliverables**
@@ -129,8 +121,6 @@ Before building:
 ---
 
 ## Part 4 — ESM-2 inference + UMAP + Qdrant
-
-**Effort**: 12–18 hours.
 
 **Goal**: every protein has a 1280-dim embedding, a 2D UMAP position, and is searchable by similarity.
 
@@ -164,8 +154,6 @@ Before building:
 
 ## Part 5 — LLM rewrites + top-100 narrative authoring
 
-**Effort**: 8–12 hours (the LLM batch is fast; the writing is the constraint).
-
 **Goal**: every protein has a plain-English description; the top 100 have hand-written 3–5 sentence narratives.
 
 **Deliverables**
@@ -193,8 +181,6 @@ Before building:
 ---
 
 ## Part 6 — API + Streamlit UI (vertical slice)
-
-**Effort**: 12–18 hours.
 
 **Goal**: end-to-end working app. Search a protein, see the atlas highlight it, see the full story card, click neighbors.
 
@@ -229,8 +215,6 @@ Before building:
 
 ## Part 7 — Polish: tour, amino acids, design pass
 
-**Effort**: 10–15 hours (hard cap — polish is open-ended).
-
 **Goal**: the project looks designed, not assembled.
 
 **Deliverables**
@@ -260,8 +244,6 @@ Before building:
 
 ## Part 8 — Documentation, deploy, portfolio integration
 
-**Effort**: 8–12 hours.
-
 **Goal**: ship publicly with documentation a senior reviewer respects.
 
 **Deliverables**
@@ -285,7 +267,7 @@ Before building:
 - LinkedIn post is live.
 
 **Risks**
-- Writing `ARCHITECTURE.md` honestly takes 4–6 hours. Don't underestimate.
+- Writing `ARCHITECTURE.md`, don't underestimate.
 
 ---
 
