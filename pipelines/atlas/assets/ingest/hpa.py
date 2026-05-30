@@ -21,12 +21,12 @@ HPA_VERSION = "v24"
 HPA_URL = "https://www.proteinatlas.org/download/proteinatlas.tsv.zip"
 R2_KEY = f"hpa/{HPA_VERSION}/hpa_proteome.parquet"
 
-# Columns from the manifest (original HPA names).
+# Columns from the HPA v24 file. Note: "Tissue expression" was removed in v24;
+# rna_tissue_specificity now carries the equivalent category information.
 _HPA_COLUMNS = [
     "Gene",
     "Uniprot",
     "Protein class",
-    "Tissue expression",
     "RNA tissue specificity",
     "RNA tissue distribution",
     "Subcellular location",
@@ -37,7 +37,6 @@ _COLUMN_RENAME: dict[str, str] = {
     "Gene": "gene_symbol",
     "Uniprot": "uniprot_accession",
     "Protein class": "protein_class",
-    "Tissue expression": "tissue_expression",
     "RNA tissue specificity": "rna_tissue_specificity",
     "RNA tissue distribution": "rna_tissue_distribution",
     "Subcellular location": "subcellular_location",
@@ -48,7 +47,6 @@ RAW_SCHEMA: dict[str, pl.DataType] = {
     "gene_symbol": pl.String(),
     "uniprot_accession": pl.String(),
     "protein_class": pl.String(),
-    "tissue_expression": pl.String(),
     "rna_tissue_specificity": pl.String(),
     "rna_tissue_distribution": pl.String(),
     "subcellular_location": pl.String(),

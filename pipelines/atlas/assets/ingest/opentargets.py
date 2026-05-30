@@ -2,14 +2,20 @@
 
 Open Targets releases quarterly Parquet dumps at EBI FTP. This module ingests
 the four datasets needed for the atlas story card:
-  - targets         -> Ensembl gene metadata + UniProt join key
-  - diseases        -> EFO disease ontology
-  - associations    -> gene-disease evidence scores (associationByOverallDirect)
-  - drugs           -> approved + clinical-trial drug-target-disease triples
+  - target              -> Ensembl gene metadata + UniProt join key
+  - disease             -> EFO disease ontology (single file in v26.03+)
+  - association_overall_direct -> gene-disease evidence scores
+  - clinical_target     -> drug-target associations with clinical stage
 
-Each dataset is a directory of Parquet part files on EBI FTP. Parts are
-downloaded sequentially, the required columns selected, and the result written
-to R2 as a single Parquet file.
+Schema notes for v26.03 (path layout changed from pre-25.12):
+  - ETL path is now ``output/`` (not ``output/etl/parquet/``).
+  - ``diseases`` → ``disease/disease.parquet`` (single file, not partitioned).
+  - ``associationByOverallDirect`` → ``association_overall_direct``; ``score``
+    renamed to ``associationScore``.
+  - ``knownDrugsAggregated`` removed; ``clinical_target/clinical_target.parquet``
+    carries drug-target-disease triples. Drug names join via ``drug_molecule``
+    in the dbt Silver layer.
+  - ``therapeuticAreas`` removed from the disease table in v26.03.
 """
 
 import io
@@ -25,45 +31,38 @@ from atlas.resources.r2 import R2Resource
 
 OT_VERSION = "26.03"
 _OT_FTP_BASE = "https://ftp.ebi.ac.uk/pub/databases/opentargets/platform"
-_ETL_PATH = f"{_OT_FTP_BASE}/{OT_VERSION}/output/etl/parquet"
+_OUTPUT_PATH = f"{_OT_FTP_BASE}/{OT_VERSION}/output"
 
 # Columns to land in Bronze (original OT names; dbt staging renames to snake_case).
 OT_TARGETS_COLUMNS = ["id", "approvedSymbol", "approvedName", "proteinIds"]
-OT_DISEASES_COLUMNS = ["id", "name", "therapeuticAreas"]
-OT_ASSOCIATIONS_COLUMNS = ["targetId", "diseaseId", "score"]
-OT_DRUGS_COLUMNS = [
-    "drugId",
-    "prefName",
-    "targetId",
-    "diseaseId",
-    "phase",
-    "mechanismOfAction",
-]
+OT_DISEASES_COLUMNS = ["id", "name"]
+OT_ASSOCIATIONS_COLUMNS = ["diseaseId", "targetId", "associationScore"]
+OT_DRUGS_COLUMNS = ["drugId", "targetId", "diseases", "maxClinicalStage"]
 
 
 def list_parts(client: httpx.Client, dataset_url: str) -> list[str]:
-    """Return the list of Parquet part-file names in an OT dataset directory.
+    """Return Parquet file names in an OT dataset directory.
 
-    Parses the EBI FTP HTTP index for ``href`` links matching the OT part-file
-    naming pattern (``part-NNNNN-*.parquet``).
+    Handles both partitioned datasets (``part-NNNNN-*.parquet``) and single-file
+    datasets (e.g., ``disease.parquet``, ``clinical_target.parquet``).
     """
     resp = client.get(dataset_url, follow_redirects=True, timeout=60.0)
     resp.raise_for_status()
-    return re.findall(r'href="(part-[^"]+\.parquet)"', resp.text)
+    return re.findall(r'href="([^"?/][^"]+\.parquet)"', resp.text)
 
 
 def fetch_dataset(client: httpx.Client, dataset: str, columns: list[str]) -> pl.DataFrame:
-    """Download all Parquet parts for one OT dataset, select columns, concatenate.
+    """Download all Parquet files for one OT dataset, select columns, concatenate.
 
-    Raises ``RuntimeError`` if no part files are found (wrong version or dataset
+    Raises ``RuntimeError`` if no files are found (wrong version or dataset
     name); raises ``polars.exceptions.ColumnNotFoundError`` if a requested column
     is absent (schema changed upstream) — both fail loudly per CLAUDE.md.
     """
-    dataset_url = f"{_ETL_PATH}/{dataset}/"
+    dataset_url = f"{_OUTPUT_PATH}/{dataset}/"
     part_names = list_parts(client, dataset_url)
     if not part_names:
         raise RuntimeError(
-            f"No Parquet parts found for Open Targets dataset '{dataset}' "
+            f"No Parquet files found for Open Targets dataset '{dataset}' "
             f"at {dataset_url}. Verify OT_VERSION='{OT_VERSION}' and dataset name."
         )
 
@@ -85,12 +84,12 @@ def ot_targets_raw(context: AssetExecutionContext, r2: R2Resource) -> Materializ
 
     Produces: Parquet with Ensembl gene IDs, approved symbol/name, and proteinIds
               (list of id+source structs used to resolve the UniProt join key).
-    Depends on: Open Targets EBI FTP v26.03 ``targets/`` dataset and the R2 resource.
+    Depends on: Open Targets EBI FTP v26.03 ``target/`` dataset and the R2 resource.
     Lands at: r2://atlas-raw/opentargets/v26.03/ot_targets.parquet.
     """
     key = f"opentargets/v{OT_VERSION}/ot_targets.parquet"
     with httpx.Client(timeout=120.0) as client:
-        df = fetch_dataset(client, "targets", OT_TARGETS_COLUMNS)
+        df = fetch_dataset(client, "target", OT_TARGETS_COLUMNS)
 
     r2.write_parquet(df, key)
     context.log.info("Wrote %d OT target rows to r2://%s/%s", df.height, r2.bucket, key)
@@ -108,13 +107,13 @@ def ot_targets_raw(context: AssetExecutionContext, r2: R2Resource) -> Materializ
 def ot_diseases_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeResult[Any]:
     """Open Targets disease ontology -> Bronze Parquet.
 
-    Produces: Parquet with EFO disease IDs, display names, and therapeutic areas.
-    Depends on: Open Targets EBI FTP v26.03 ``diseases/`` dataset and the R2 resource.
+    Produces: Parquet with EFO disease IDs and display names.
+    Depends on: Open Targets EBI FTP v26.03 ``disease/disease.parquet`` and R2.
     Lands at: r2://atlas-raw/opentargets/v26.03/ot_diseases.parquet.
     """
     key = f"opentargets/v{OT_VERSION}/ot_diseases.parquet"
     with httpx.Client(timeout=120.0) as client:
-        df = fetch_dataset(client, "diseases", OT_DISEASES_COLUMNS)
+        df = fetch_dataset(client, "disease", OT_DISEASES_COLUMNS)
 
     r2.write_parquet(df, key)
     context.log.info("Wrote %d OT disease rows to r2://%s/%s", df.height, r2.bucket, key)
@@ -132,15 +131,15 @@ def ot_diseases_raw(context: AssetExecutionContext, r2: R2Resource) -> Materiali
 def ot_associations_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeResult[Any]:
     """Open Targets gene-disease associations -> Bronze Parquet.
 
-    Produces: Parquet of (targetId, diseaseId, score) triples from
-              ``associationByOverallDirect`` — the aggregated, cross-source
-              confidence scores used in the story-card "When broken" slot.
-    Depends on: Open Targets EBI FTP v26.03 ``associationByOverallDirect/`` and R2.
+    Produces: Parquet of (diseaseId, targetId, associationScore) triples from
+              ``association_overall_direct`` — aggregated cross-source confidence
+              scores used in the story-card "When broken" slot.
+    Depends on: OT EBI FTP v26.03 ``association_overall_direct/`` and R2.
     Lands at: r2://atlas-raw/opentargets/v26.03/ot_associations.parquet.
     """
     key = f"opentargets/v{OT_VERSION}/ot_associations.parquet"
     with httpx.Client(timeout=120.0) as client:
-        df = fetch_dataset(client, "associationByOverallDirect", OT_ASSOCIATIONS_COLUMNS)
+        df = fetch_dataset(client, "association_overall_direct", OT_ASSOCIATIONS_COLUMNS)
 
     r2.write_parquet(df, key)
     context.log.info("Wrote %d OT association rows to r2://%s/%s", df.height, r2.bucket, key)
@@ -156,17 +155,17 @@ def ot_associations_raw(context: AssetExecutionContext, r2: R2Resource) -> Mater
 
 @asset(group_name="ingest", compute_kind="python")
 def ot_drugs_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeResult[Any]:
-    """Open Targets known drugs -> Bronze Parquet.
+    """Open Targets drug-target associations -> Bronze Parquet.
 
-    Produces: Parquet of drug-target-disease triples from ``knownDrugsAggregated``
-              covering approved (phase 4) and clinical-trial drugs. Used for the
-              "Drugs" slot on the story card.
-    Depends on: Open Targets EBI FTP v26.03 ``knownDrugsAggregated/`` and R2.
+    Produces: Parquet of drug-target triples from ``clinical_target`` with
+              clinical stage and associated disease list. Drug display names
+              join via ``drug_molecule`` in the dbt Silver layer.
+    Depends on: OT EBI FTP v26.03 ``clinical_target/clinical_target.parquet`` and R2.
     Lands at: r2://atlas-raw/opentargets/v26.03/ot_drugs.parquet.
     """
     key = f"opentargets/v{OT_VERSION}/ot_drugs.parquet"
     with httpx.Client(timeout=120.0) as client:
-        df = fetch_dataset(client, "knownDrugsAggregated", OT_DRUGS_COLUMNS)
+        df = fetch_dataset(client, "clinical_target", OT_DRUGS_COLUMNS)
 
     r2.write_parquet(df, key)
     context.log.info("Wrote %d OT drug rows to r2://%s/%s", df.height, r2.bucket, key)

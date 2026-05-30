@@ -3,6 +3,9 @@
 Tests check values, not just that the code runs (CLAUDE.md rule 7). The
 `parse_hpa_tsv` function is tested directly against fixture bytes so no network
 I/O occurs in the test suite.
+
+Note: HPA v24 removed the "Tissue expression" column that the manifest documented.
+The equivalent tissue category is now carried by "RNA tissue specificity".
 """
 
 from __future__ import annotations
@@ -14,24 +17,24 @@ import polars as pl
 
 from atlas.assets.ingest.hpa import RAW_SCHEMA, parse_hpa_tsv
 
-# Minimal HPA TSV with two proteins (insulin appears twice to test deduplication).
+# Minimal HPA v24 TSV with two proteins (insulin appears twice to test deduplication).
 _HPA_TSV_BYTES = (
-    b"Gene\tUniprot\tProtein class\tTissue expression\t"
+    b"Gene\tUniprot\tProtein class\t"
     b"RNA tissue specificity\tRNA tissue distribution\t"
     b"Subcellular location\tDisease involvement\n"
-    b"INS\tP01308\tPredicted secreted proteins\tTissue enhanced (pancreas)\t"
+    b"INS\tP01308\tPredicted secreted proteins\t"
     b"Tissue enhanced\tDetected in single\tVesicles, Golgi apparatus\tDiabetes mellitus\n"
-    b"EGFR\tP00533\tCD markers\tLow tissue specificity\t"
+    b"EGFR\tP00533\tCD markers\t"
     b"Low tissue specificity\tDetected in many\tPlasma membrane\tNon-small cell lung carcinoma\n"
-    b"INS\tP01308\tDuplicate row\tDuplicate\tDuplicate\tDuplicate\tDuplicate\tDuplicate\n"
+    b"INS\tP01308\tDuplicate row\tDuplicate\tDuplicate\tDuplicate\tDuplicate\n"
 )
 
 # TSV with a row missing a UniProt accession.
 _HPA_TSV_NULL_UNIPROT = (
-    b"Gene\tUniprot\tProtein class\tTissue expression\t"
+    b"Gene\tUniprot\tProtein class\t"
     b"RNA tissue specificity\tRNA tissue distribution\t"
     b"Subcellular location\tDisease involvement\n"
-    b"UNKN\t\tUncharacterized\tNot detected\tNot detected\tNot detected\t\t\n"
+    b"UNKN\t\tUncharacterized\tNot detected\tNot detected\t\t\n"
 )
 
 
@@ -41,7 +44,7 @@ def test_parse_hpa_tsv_flattens_insulin_row() -> None:
     insulin = df.filter(pl.col("uniprot_accession") == "P01308")  # pyright: ignore[reportUnknownMemberType]
     assert insulin.height == 1
     assert insulin.item(0, "gene_symbol") == "INS"
-    assert insulin.item(0, "tissue_expression") == "Tissue enhanced (pancreas)"
+    assert insulin.item(0, "rna_tissue_specificity") == "Tissue enhanced"
     assert insulin.item(0, "subcellular_location") == "Vesicles, Golgi apparatus"
     assert insulin.item(0, "disease_involvement") == "Diabetes mellitus"
 
@@ -78,10 +81,10 @@ def test_parse_hpa_tsv_null_uniprot_becomes_null() -> None:
 
 def test_parse_hpa_tsv_null_fields_stay_null() -> None:
     tsv = (
-        b"Gene\tUniprot\tProtein class\tTissue expression\t"
+        b"Gene\tUniprot\tProtein class\t"
         b"RNA tissue specificity\tRNA tissue distribution\t"
         b"Subcellular location\tDisease involvement\n"
-        b"TP53\tP04637\t\tLow tissue specificity\t\t\t\t\n"
+        b"TP53\tP04637\t\t\t\t\t\n"
     )
     df = parse_hpa_tsv(tsv)
 
