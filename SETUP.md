@@ -1,6 +1,6 @@
 # SETUP.md — Prerequisites for the Protein Atlas Build
 
-This checklist enumerates every account, token, and local tool required before Part 1 begins. Total setup time is roughly **1.5–2 hours** including account verifications. Most steps are free; the only real costs are an estimated ~$10 in Anthropic API spend during Part 5 and ~$5–10 in Modal GPU spend during Part 4. Everything else fits in free tiers.
+This checklist enumerates every account, token, and local tool required before Part 1 begins. Most steps are free; the only real costs are an estimated ~$10 in Anthropic API spend during Part 5 and ~$5–10 in Modal GPU spend during Part 4. Everything else fits in free tiers.
 
 On completion, the following nine secret values exist in a gitignored `.env.local`:
 
@@ -191,6 +191,5 @@ Part 1 can begin when **every** box is checked:
 - [ ] Qdrant Cloud dashboard shows the running `atlas` cluster.
 - [ ] Anthropic console shows an API key and an active monthly budget cap.
 
-Total elapsed time: ~1.5–2 hours, mostly account verifications and dashboard navigation.
 
 When the checklist is green, Claude Code can be opened in the project folder using the standard opening prompt from `ROADMAP.md` Part 1.

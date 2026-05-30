@@ -1,0 +1,56 @@
+[project]
+name = "protein-atlas"
+version = "0.1.0"
+description = "A living atlas of every human protein, navigated by ESM-2 embeddings."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dagster>=1.9",
+    "polars>=1.17",
+    "httpx>=0.28",
+    "boto3>=1.35",
+]
+
+[dependency-groups]
+dev = [
+    "dagster-webserver>=1.9",
+    "ruff>=0.8",
+    "pyright>=1.1.390",
+    "pytest>=8.3",
+    "boto3-stubs[s3]>=1.35",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# The Dagster project lives in pipelines/; the importable package is `atlas`
+# (CLAUDE.md rule 8: `from atlas.logging import logger`). Listing the nested
+# pipelines/atlas dir strips the pipelines/ prefix, exposing it as `atlas`.
+[tool.hatch.build.targets.wheel]
+packages = ["pipelines/atlas"]
+
+[tool.dagster]
+module_name = "atlas.definitions"
+code_location_name = "atlas"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "TID"]
+
+[tool.pyright]
+include = ["pipelines/atlas"]
+# `atlas` is the import name; its source lives in pipelines/atlas, so add
+# pipelines/ as a search root for resolution from source (not the editable stub).
+extraPaths = ["pipelines"]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["pipelines/atlas/tests"]
+addopts = "-q"

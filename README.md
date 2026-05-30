@@ -134,16 +134,20 @@ See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_sourc
 ├── docs/
 │   ├── protein_atlas_curation_list.md       # 100 hand-curated proteins
 │   └── protein_atlas_data_source_manifest.md  # data sources, fields, joins, schema
-├── infra/                                   # OpenTofu modules
+├── infra/                                   # OpenTofu modules (R2 bucket)
 ├── pipelines/                               # Dagster project
-│   ├── assets/{ingest, transform, ml}/      # one module per source
-│   ├── resources/
-│   └── tests/
+│   └── atlas/                               # importable package (`import atlas`)
+│       ├── definitions.py                   # Dagster code location
+│       ├── logging.py                       # project logger
+│       ├── assets/ingest/                   # one module per source (uniprot.py)
+│       ├── resources/                       # shared resources (r2.py)
+│       └── tests/                           # fixture-based correctness tests
 ├── models/                                  # dbt project (sources, staging, marts)
 ├── apps/
 │   ├── api/                                 # FastAPI on Modal
 │   └── ui/                                  # Streamlit
 ├── notebooks/                               # exploratory
+├── .github/workflows/ci.yml                 # ruff + pyright + pytest on every PR
 ├── pyproject.toml
 └── .env.example
 ```
@@ -151,7 +155,26 @@ See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_sourc
 
 ## Quickstart
 
-Quickstart instructions will be added when the code does (Part 1 onward). Until then, see [SETUP.md](./SETUP.md) for prerequisites — accounts, tokens, and local tools required before development can begin.
+Prerequisites — accounts, tokens, and local tools — are listed in
+[SETUP.md](./SETUP.md). Copy `.env.example` to `.env.local` and fill in your
+secrets, then:
+
+```bash
+uv sync                         # create the venv + install locked deps
+uv run ruff check .             # lint
+uv run pyright                  # type-check (strict)
+uv run pytest                   # tests
+
+# Provision the R2 bucket (reads R2 keys from .env.local via TF_VAR_*)
+tofu -chdir=infra init
+tofu -chdir=infra apply
+
+# Ingest reviewed human UniProt into R2 (~20k rows)
+uv run dagster asset materialize --select uniprot_human_reviewed_raw -m atlas.definitions
+
+# Or explore in the Dagster UI
+uv run dagster dev -m atlas.definitions
+```
 
 ## Documentation
 
@@ -167,11 +190,13 @@ Quickstart instructions will be added when the code does (Part 1 onward). Until 
 ## Status
 
 <!-- MAINTAINED: status -->
-**Current status**: Pre-Part 1 (design complete; build not yet started).
+**Current status**: Part 1 complete — repo skeleton, R2 bucket provisioned by
+OpenTofu, and the `uniprot_human_reviewed_raw` asset landing 20,431 reviewed
+human proteins as Parquet in R2. CI (ruff + pyright + pytest) runs on every PR.
 
 Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential parts:
 
-- [ ] Part 1 — Foundation + UniProt ingest
+- [x] Part 1 — Foundation + UniProt ingest
 - [ ] Part 2 — Remaining data sources
 - [ ] Part 3 — dbt modeling
 - [ ] Part 4 — ESM-2 inference + UMAP + Qdrant
