@@ -190,14 +190,17 @@ uv run dagster dev -m atlas.definitions
 ## Status
 
 <!-- MAINTAINED: status -->
-**Current status**: Part 1 complete — repo skeleton, R2 bucket provisioned by
-OpenTofu, and the `uniprot_human_reviewed_raw` asset landing 20,431 reviewed
-human proteins as Parquet in R2. CI (ruff + pyright + pytest) runs on every PR.
+**Current status**: Part 2 complete — all 7 Bronze-layer ingest assets
+materialized and verified. Raw data from UniProt (20,431 rows), STRING-DB
+(472,588 interactions), Human Protein Atlas (19,180 rows), and Open Targets
+v26.03 (targets 78,691 · diseases 47,030 · associations 4,508,002 · drugs
+13,407) lands in Cloudflare R2 as Parquet. CI (ruff + pyright + pytest) passes
+on every PR.
 
 Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential parts:
 
 - [x] Part 1 — Foundation + UniProt ingest
-- [ ] Part 2 — Remaining data sources
+- [x] Part 2 — Remaining data sources
 - [ ] Part 3 — dbt modeling
 - [ ] Part 4 — ESM-2 inference + UMAP + Qdrant
 - [ ] Part 5 — LLM rewrites + curation

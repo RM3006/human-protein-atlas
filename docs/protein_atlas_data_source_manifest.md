@@ -217,11 +217,12 @@ For v1, **just `proteinatlas.tsv` is enough** — it has the summary fields we n
 | `Gene` | `INS` | HGNC gene symbol |
 | `Uniprot` | `P01308` | **Direct join key** |
 | `Protein class` | `Predicted secreted proteins, Plasma proteins` | Tag chips |
-| `Tissue expression` | `Tissue enhanced (pancreas)` | "Made in" slot |
-| `RNA tissue specificity` | `Group enriched` | Specificity badge |
-| `RNA tissue distribution` | `Detected in single` | |
+| `RNA tissue specificity` | `Tissue enhanced` | "Made in" slot (replaces removed `Tissue expression`) |
+| `RNA tissue distribution` | `Detected in single` | Breadth of expression |
 | `Subcellular location` | `Vesicles, Golgi apparatus` | Detail field |
 | `Disease involvement` | `Diabetes mellitus, FDA approved drug targets` | Tag chip |
+
+> **v24 schema change**: the `Tissue expression` column (which previously gave "Tissue enhanced (pancreas)"-style values) was removed in HPA v24. `RNA tissue specificity` now carries the equivalent tissue category information. The specific tissue name is no longer available in a single summary column; use the long-format `normal_tissue.tsv` file if per-tissue detail is needed in a later version.
 
 ### How it joins
 
@@ -237,6 +238,7 @@ Direct: the `Uniprot` column gives you the accession. One `LEFT JOIN dim_protein
 
 - **The `Uniprot` column is sometimes empty** for less-characterized proteins. Use a `LEFT JOIN` and tolerate nulls.
 - **Some genes have multiple HPA rows** (rare but happens). Deduplicate on `Uniprot`, keeping the first.
+- **`Tissue expression` column removed in v24.** The ingest uses `RNA tissue specificity` in its place. The Bronze schema has no `tissue_expression` column — dbt staging maps `rna_tissue_specificity` to the "Made in" story-card slot.
 
 ---
 
@@ -263,10 +265,14 @@ Open Targets releases quarterly with semantic versioning like `24.09` (year.mont
 
 **Datasets to pull** (only these four, the rest are out of scope for v1):
 
-- `targets/` — target metadata, ~50 MB
-- `diseases/` — disease ontology (EFO), ~30 MB
-- `associationByDatasourceDirect/` (or `associationByOverallDirect/`) — gene-disease evidence with scores, ~500 MB
-- `knownDrugsAggregated/` — drug-target-disease triples for known approved or clinical-trial drugs, ~50 MB
+| Dataset (v26.03 path) | Contents | Volume |
+|---|---|---|
+| `output/target/` | Target metadata, proteinIds | ~50 MB |
+| `output/disease/disease.parquet` | EFO disease ontology (single file since v26.03) | ~7 MB |
+| `output/association_overall_direct/` | Gene-disease evidence scores | ~500 MB |
+| `output/clinical_target/clinical_target.parquet` | Drug-target-disease triples (replaces removed `knownDrugsAggregated`) | ~3 MB |
+
+> **v26.03 layout change**: prior versions used `output/etl/parquet/{dataset}/`. From v26.03 the path is `output/{dataset}/` directly. `disease` and `clinical_target` are now single Parquet files rather than partitioned directories.
 
 ### What we pull
 
@@ -279,32 +285,33 @@ From `targets/`:
 | `approvedName` | `insulin` | |
 | `proteinIds[type=uniprot_swissprot].id` | `P01308` | **Join key back to UniProt** |
 
-From `associationByOverallDirect/`:
+From `association_overall_direct/` (v26.03 name; was `associationByOverallDirect/`):
 
 | Column | Example | Used for |
 |---|---|---|
 | `targetId` | `ENSG00000254647` | Gene |
 | `diseaseId` | `EFO_0001359` | Disease (EFO ontology) |
-| `score` | `0.87` | Composite confidence, 0–1 |
+| `associationScore` | `0.87` | Composite confidence, 0–1 (was `score` before v26.03) |
 
-From `diseases/`:
+From `disease/disease.parquet` (v26.03; was partitioned `diseases/`):
 
 | Column | Example | Used for |
 |---|---|---|
 | `id` | `EFO_0001359` | Primary key |
 | `name` | `type 1 diabetes mellitus` | Display name |
-| `therapeuticAreas[0]` | `MONDO_0024458` | High-level area (Endocrine) |
 
-From `knownDrugsAggregated/`:
+> **v26.03**: `therapeuticAreas` was removed from this table. Therapeutic area hierarchy is now derivable from the `parents` column, which the dbt staging layer resolves.
+
+From `clinical_target/clinical_target.parquet` (v26.03; replaces removed `knownDrugsAggregated/`):
 
 | Column | Example | Used for |
 |---|---|---|
 | `drugId` | `CHEMBL1201631` | ChEMBL drug ID |
-| `prefName` | `INSULIN HUMAN` | Drug display name |
 | `targetId` | `ENSG00000254647` | Target gene |
-| `diseaseId` | `EFO_0001359` | Indication |
-| `phase` | `4` | Highest trial phase (4 = approved) |
-| `mechanismOfAction` | `Insulin receptor agonist` | |
+| `diseases` | `["EFO_0001359"]` | List of disease indications |
+| `maxClinicalStage` | `4` | Highest trial phase (4 = approved) |
+
+> **v26.03**: `knownDrugsAggregated` was removed. `clinical_target` carries the drug-target-disease triples. Drug display name (`prefName`) and mechanism of action are in separate `drug_molecule/` and `drug_mechanism_of_action/` datasets and are joined in the dbt Silver layer.
 
 ### How it joins
 
@@ -331,7 +338,10 @@ For every target row, OT *already includes* a `proteinIds` list. You don't need 
 
 - **Multiple ENSG per UniProt accession is rare but possible** (gene duplications, pseudogenes). Use the canonical one OT marks as `isApproved=true`.
 - **EFO disease IDs are hierarchical.** `EFO_0001359` (type 1 diabetes) has parents like `EFO_0000400` (diabetes mellitus). For display, use the most specific term; for filtering, you may want to walk the parent chain.
-- **The `associationByOverall*` vs `associationByDatasource*` distinction**: `Overall` aggregates across all evidence sources, `Datasource` keeps each source separate. For the story card, `Overall` is what you want.
+- **The `association_overall_direct` vs `association_by_datasource_direct` distinction**: `overall` aggregates across all evidence sources, `datasource` keeps each source separate. For the story card, `overall` is what you want.
+- **`ot_targets_raw` contains all species** (78,691 rows), not just human. The dbt staging layer filters to human proteins by joining on `uniprot_accession` from the UniProt Bronze asset.
+- **`ot_associations_raw` is large** (4.5M rows, all species/disease combinations). After filtering to the ~20k human proteins, the working set shrinks substantially.
+- **Drug names are not in `clinical_target`**. Join `ot_drugs_raw` with `drug_molecule/` on `drugId` in the Silver layer to get display names.
 
 ---
 
