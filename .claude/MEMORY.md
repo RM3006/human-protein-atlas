@@ -46,50 +46,63 @@ writeup.
 
 ---
 
-## Part 2 — Remaining data sources (code complete; materialization pending)
+## Part 2 — Remaining data sources (complete)
 
 ### Decisions made
 
 - **Open Targets version pinned to `26.03`** (March 2026 quarterly release).
-  FTP base: `https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/26.03/output/etl/parquet/`.
+  FTP base: `https://ftp.ebi.ac.uk/pub/databases/opentargets/platform/26.03/output/`.
 - **4 separate Dagster assets for Open Targets** (`ot_targets_raw`, `ot_diseases_raw`,
   `ot_associations_raw`, `ot_drugs_raw`) rather than one multi-output asset.
-  Chosen for idempotency and surgical reruns per the discussion at session start.
 - **STRING links file streamed, not temp-filed.** `_IterBytesIO` adapts
   `httpx.iter_bytes()` to `io.RawIOBase` so `gzip.open(io.BufferedReader(...))` can
   decompress line-by-line without loading the 1.6 GB uncompressed payload into memory.
-  One `# pyright: ignore[reportArgumentType]` suppression at the `BufferedReader` call
-  (RawIOBase subclass parameter narrowing — irreducible stub gap).
-- **`Accept-Encoding: identity` header on STRING downloads** to prevent httpx from
-  auto-decompressing the `.gz` file at the transport layer before our `gzip.open` sees it.
-- **HPA version hardcoded to `v24`** (no machine-readable version in the download URL).
-  Bump to `v25` when HPA ships the next annual release.
-- **Test helpers are public, not private**, when tests need to import them directly
-  (pyright strict `reportPrivateUsage` would fail otherwise). Pattern established:
-  functions that need direct unit tests are named without a leading underscore;
-  pure implementation helpers tested only indirectly keep the underscore.
-- **`.unique()` and `.cast()` in hpa.py, `.select()` in opentargets.py** each need
-  one `# pyright: ignore` for polars stub gaps (same pattern as Part 1).
+- **`Accept-Encoding: identity` header on STRING downloads** prevents httpx from
+  auto-decompressing `.gz` files at the transport layer before `gzip.open` sees them.
+- **HPA version hardcoded to `v24`**; bump to `v25` when HPA ships the next annual release.
+- **Test helpers are public** when tests need to import them directly (pyright strict
+  `reportPrivateUsage`). Functions tested only indirectly keep the underscore prefix.
 
-### Files added
+### Schema discoveries during materialization (breaking changes in actual data)
 
-- `pipelines/atlas/assets/ingest/string.py` — STRING interactions asset
-- `pipelines/atlas/assets/ingest/hpa.py` — HPA proteome asset
-- `pipelines/atlas/assets/ingest/opentargets.py` — 4 OT assets
-- `pipelines/atlas/tests/test_string.py` — 8 tests (pure function + mocked HTTP)
-- `pipelines/atlas/tests/test_hpa.py` — 7 tests (parse + dedup + null handling)
-- `pipelines/atlas/tests/test_opentargets.py` — 7 tests (directory listing + concat)
+- **HPA v24 dropped `Tissue expression` column.** `rna_tissue_specificity` is the
+  replacement. Bronze schema has no `tissue_expression` field; manifest updated.
+- **OT v26.03 path layout changed**: `output/etl/parquet/` → `output/` directly.
+- **OT dataset renames**: `targets→target`, `diseases→disease/disease.parquet` (single
+  file), `associationByOverallDirect→association_overall_direct`.
+- **OT column rename**: `score→associationScore` in the associations dataset.
+- **`knownDrugsAggregated` removed** in OT v26.03; replaced by
+  `clinical_target/clinical_target.parquet`. Drug display names now require a join to
+  `drug_molecule/` in the dbt Silver layer (Part 3).
+- **`therapeuticAreas` removed** from OT disease table; derivable from `parents` column.
+- **`list_parts` regex updated** to match both partitioned (`part-*`) and single-file
+  (`disease.parquet`, `clinical_target.parquet`) dataset layouts.
 
-### Status
+### Materialized row counts (confirmed in R2)
 
-- ruff, pyright (strict, 0 errors), pytest (28 passed) all green locally.
-- **Assets not yet materialized** — run `dagster asset materialize` for each source
-  and verify row counts against the manifest before marking Part 2 complete.
+| Asset | R2 key | Rows |
+|---|---|---|
+| `uniprot_human_reviewed_raw` | `uniprot/v2026_01/` | 20,431 |
+| `hpa_proteome_raw` | `hpa/v24/` | 19,180 |
+| `string_interactions_raw` | `string/v12.0/` | 472,588 |
+| `ot_targets_raw` | `opentargets/v26.03/` | 78,691 (all species; filter to human in dbt) |
+| `ot_diseases_raw` | `opentargets/v26.03/` | 47,030 |
+| `ot_associations_raw` | `opentargets/v26.03/` | 4,508,002 (all species; filter in dbt) |
+| `ot_drugs_raw` | `opentargets/v26.03/` | 13,407 |
 
-### Next steps
+### Part 2 is safe to build on
 
-- Materialize all 5 ingest assets; verify row counts against the manifest.
-- Check Dagster UI for dependency edges between the 5 assets.
-- If counts look correct, open PR and confirm CI is green (Part 2 checkpoint).
-- Part 3: `dbt init` with `dbt-duckdb`, pointing at MotherDuck. Sources, staging,
-  seven mart tables. Story-card SQL for insulin (P01308) as the exit criterion.
+All Bronze assets are idempotent (safe to rerun), typed Parquet in R2, and verified
+against the source. Part 3 (dbt) reads from these keys. Key join notes for dbt:
+- Filter `ot_targets_raw` and `ot_associations_raw` to human proteins via join on
+  `uniprot_accession` from the UniProt Bronze asset.
+- Drug names: join `ot_drugs_raw.drugId` → `drug_molecule/` OT dataset.
+- STRING: `uniprot_a` and `uniprot_b` are already resolved UniProt accessions.
+- HPA: `uniprot_accession` joins directly to `dim_protein`.
+
+### Next steps (Part 3)
+
+- `dbt init` with `dbt-duckdb` pointing at MotherDuck `atlas` database.
+- `models/sources.yml` pointing at the 7 Bronze Parquet files in R2.
+- Staging models (one per source), then seven mart tables per the manifest schema.
+- Exit criterion: `protein_story_card.sql` returns a complete row for insulin (P01308).
