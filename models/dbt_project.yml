@@ -1,0 +1,26 @@
+name: atlas
+version: '1.0.0'
+profile: atlas
+config-version: 2
+
+model-paths: ["staging", "marts", "queries"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  r2_bucket: "atlas-raw"
+  uniprot_version: "2026_01"
+  hpa_version: "v24"
+  string_version: "12.0"
+  ot_version: "26.03"
+
+models:
+  atlas:
+    +materialized: view

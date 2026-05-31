@@ -90,9 +90,10 @@ Tools installed on the development machine. One-time install.
 - **Cost**: free up to 10 GB. The project uses well under.
 - **Steps**:
   1. Registration at app.motherduck.com (Google or GitHub OAuth — no separate password).
-  2. Create a database named `atlas`.
+  2. The `atlas` database is created automatically on first `dbt run` (no manual step needed).
   3. **Settings → Tokens → Generate a service token.** Retain the value.
 - **Secrets**: `MOTHERDUCK_TOKEN`.
+- **Running dbt (Part 3+)**: `cd models && dbt run --profiles-dir . && dbt test --profiles-dir .`
 
 ---
 

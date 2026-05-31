@@ -38,6 +38,7 @@ OT_TARGETS_COLUMNS = ["id", "approvedSymbol", "approvedName", "proteinIds"]
 OT_DISEASES_COLUMNS = ["id", "name"]
 OT_ASSOCIATIONS_COLUMNS = ["diseaseId", "targetId", "associationScore"]
 OT_DRUGS_COLUMNS = ["drugId", "targetId", "diseases", "maxClinicalStage"]
+OT_DRUG_MOLECULES_COLUMNS = ["id", "name", "drugType"]
 
 
 def list_parts(client: httpx.Client, dataset_url: str) -> list[str]:
@@ -169,6 +170,33 @@ def ot_drugs_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeR
 
     r2.write_parquet(df, key)
     context.log.info("Wrote %d OT drug rows to r2://%s/%s", df.height, r2.bucket, key)
+    return MaterializeResult(
+        metadata={
+            "num_records": MetadataValue.int(df.height),
+            "ot_version": MetadataValue.text(OT_VERSION),
+            "r2_key": MetadataValue.text(key),
+            "preview": MetadataValue.md(f"```\n{df.head(5)}\n```"),
+        }
+    )
+
+
+@asset(group_name="ingest", compute_kind="python")
+def ot_drug_molecules_raw(context: AssetExecutionContext, r2: R2Resource) -> MaterializeResult[Any]:
+    """Open Targets drug molecule metadata -> Bronze Parquet.
+
+    Produces: Parquet of (id, name, drugType) rows from ``drug_molecule`` —
+              preferred drug names and modality used to populate ``dim_drug``
+              in the dbt Silver layer (drug display names are not in
+              ``clinical_target``; they require this join).
+    Depends on: OT EBI FTP v26.03 ``drug_molecule/`` dataset and R2.
+    Lands at: r2://atlas-raw/opentargets/v26.03/ot_drug_molecules.parquet.
+    """
+    key = f"opentargets/v{OT_VERSION}/ot_drug_molecules.parquet"
+    with httpx.Client(timeout=120.0) as client:
+        df = fetch_dataset(client, "drug_molecule", OT_DRUG_MOLECULES_COLUMNS)
+
+    r2.write_parquet(df, key)
+    context.log.info("Wrote %d OT drug molecule rows to r2://%s/%s", df.height, r2.bucket, key)
     return MaterializeResult(
         metadata={
             "num_records": MetadataValue.int(df.height),

@@ -1,0 +1,22 @@
+# dbt connection profile for the Protein Atlas warehouse.
+# Credentials come from .env.local (CLAUDE.md rule 2: no secrets in code).
+# Run dbt from the models/ directory: cd models && dbt run
+# Or from project root: dbt run --project-dir models --profiles-dir models
+
+atlas:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "md:atlas?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
+      schema: main
+      threads: 4
+      extensions:
+        - httpfs
+      settings:
+        s3_access_key_id: "{{ env_var('CLOUDFLARE_R2_ACCESS_KEY_ID') }}"
+        s3_secret_access_key: "{{ env_var('CLOUDFLARE_R2_SECRET_ACCESS_KEY') }}"
+        s3_endpoint: "{{ env_var('CLOUDFLARE_ACCOUNT_ID') }}.r2.cloudflarestorage.com"
+        s3_url_style: path
+        s3_use_ssl: "true"
+        s3_region: auto
