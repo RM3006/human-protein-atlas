@@ -3,7 +3,7 @@
 > A living atlas of every human protein — what it does, who it talks to, what goes wrong when it breaks — navigated by an AI that learned biology from sequence alone.
 
 <!-- MAINTAINED: links -->
-[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · **Status**: pre-Part 1 (design complete; build not yet started)
+[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · **Status**: Part 3 complete (Bronze → Silver → Gold in MotherDuck)
 <!-- /MAINTAINED -->
 
 <!-- MAINTAINED: hero -->
@@ -190,18 +190,17 @@ uv run dagster dev -m atlas.definitions
 ## Status
 
 <!-- MAINTAINED: status -->
-**Current status**: Part 2 complete — all 7 Bronze-layer ingest assets
-materialized and verified. Raw data from UniProt (20,431 rows), STRING-DB
-(472,588 interactions), Human Protein Atlas (19,180 rows), and Open Targets
-v26.03 (targets 78,691 · diseases 47,030 · associations 4,508,002 · drugs
-13,407) lands in Cloudflare R2 as Parquet. CI (ruff + pyright + pytest) passes
-on every PR.
+**Current status**: Part 3 complete — star-schema warehouse built and tested in
+MotherDuck. 16 dbt models (8 staging views + 7 Gold tables + 1 story-card view)
+built from the 8 Bronze Parquet sources in R2. All 45 data tests pass; canonical
+`protein_story_card` query returns a complete row for insulin (P01308) and any
+long-tail protein.
 
 Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential parts:
 
 - [x] Part 1 — Foundation + UniProt ingest
 - [x] Part 2 — Remaining data sources
-- [ ] Part 3 — dbt modeling
+- [x] Part 3 — dbt modeling
 - [ ] Part 4 — ESM-2 inference + UMAP + Qdrant
 - [ ] Part 5 — LLM rewrites + curation
 - [ ] Part 6 — API + UI vertical slice

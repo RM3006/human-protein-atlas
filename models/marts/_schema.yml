@@ -1,0 +1,109 @@
+version: 2
+
+models:
+  - name: dim_protein
+    description: "One row per reviewed human protein. Anchor table; every fact table joins here."
+    columns:
+      - name: uniprot_accession
+        description: "UniProt primary accession — primary key."
+        tests:
+          - unique
+          - not_null
+      - name: protein_name
+        tests:
+          - not_null
+      - name: sequence
+        tests:
+          - not_null
+
+  - name: dim_disease
+    description: "One row per EFO disease term from Open Targets."
+    columns:
+      - name: efo_id
+        description: "EFO disease ID — primary key."
+        tests:
+          - unique
+          - not_null
+      - name: disease_name
+        tests:
+          - not_null
+
+  - name: dim_drug
+    description: "One row per ChEMBL drug that appears in clinical_target associations."
+    columns:
+      - name: chembl_id
+        description: "ChEMBL molecule ID — primary key."
+        tests:
+          - unique
+          - not_null
+
+  - name: fact_protein_tissue
+    description: "HPA tissue expression summary, one row per protein."
+    columns:
+      - name: uniprot_accession
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_protein')
+                field: uniprot_accession
+
+  - name: fact_interaction
+    description: "STRING-DB high-confidence interactions, limited to Swiss-Prot human proteins."
+    columns:
+      - name: uniprot_a
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_protein')
+                field: uniprot_accession
+      - name: uniprot_b
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_protein')
+                field: uniprot_accession
+      - name: combined_score
+        tests:
+          - not_null
+
+  - name: fact_protein_disease
+    description: "Open Targets gene-disease scores for human proteins."
+    columns:
+      - name: uniprot_accession
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_protein')
+                field: uniprot_accession
+      - name: efo_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_disease')
+                field: efo_id
+      - name: overall_score
+        tests:
+          - not_null
+
+  - name: fact_drug_target_disease
+    description: "Drug-target-disease triples from Open Targets clinical_target."
+    columns:
+      - name: chembl_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_drug')
+                field: chembl_id
+      - name: uniprot_accession
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_protein')
+                field: uniprot_accession

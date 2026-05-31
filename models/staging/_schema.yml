@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: stg_uniprot
+    description: "UniProt Swiss-Prot reviewed human proteins, flattened to one row per primary accession."
+    columns:
+      - name: uniprot_accession
+        description: "UniProt primary accession — join key across the entire atlas."
+        tests:
+          - unique
+          - not_null
+      - name: sequence
+        tests:
+          - not_null
+
+  - name: stg_hpa
+    description: "Human Protein Atlas proteome summary (v24), one row per UniProt accession."
+    columns:
+      - name: uniprot_accession
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_string
+    description: "STRING-DB high-confidence interactions (score >= 700), resolved to UniProt accessions."
+    columns:
+      - name: uniprot_a
+        tests:
+          - not_null
+      - name: uniprot_b
+        tests:
+          - not_null
+      - name: combined_score
+        tests:
+          - not_null
+
+  - name: stg_ot_targets
+    description: "Open Targets target metadata with UniProt Swiss-Prot accession extracted from proteinIds."
+    columns:
+      - name: ensembl_gene_id
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_ot_diseases
+    description: "Open Targets EFO disease ontology — one row per disease term."
+    columns:
+      - name: efo_id
+        tests:
+          - unique
+          - not_null
+      - name: disease_name
+        tests:
+          - not_null
+
+  - name: stg_ot_associations
+    description: "Open Targets gene-disease association scores (all species; filtered to human in marts)."
+    columns:
+      - name: ensembl_gene_id
+        tests:
+          - not_null
+      - name: efo_id
+        tests:
+          - not_null
+      - name: overall_score
+        tests:
+          - not_null
+
+  - name: stg_ot_drugs
+    description: "Open Targets drug-target-disease triples from clinical_target (v26.03). max_clinical_stage_raw is a string category (APPROVAL, PHASE3, etc.) mapped to numeric in dim_drug."
+    columns:
+      - name: chembl_id
+        tests:
+          - not_null
+      - name: ensembl_gene_id
+        tests:
+          - not_null
+
+  - name: stg_ot_drug_molecules
+    description: "Open Targets drug molecule metadata — preferred names and modality."
+    columns:
+      - name: chembl_id
+        tests:
+          - unique
+          - not_null

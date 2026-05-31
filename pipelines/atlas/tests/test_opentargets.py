@@ -20,6 +20,7 @@ import pytest
 
 from atlas.assets.ingest.opentargets import (
     OT_ASSOCIATIONS_COLUMNS,
+    OT_DRUG_MOLECULES_COLUMNS,
     OT_DRUGS_COLUMNS,
     OT_TARGETS_COLUMNS,
     fetch_dataset,
@@ -205,6 +206,33 @@ def test_targets_dataset_columns_are_present() -> None:
     assert df.item(0, "id") == "ENSG00000254647"
     assert df.item(0, "approvedSymbol") == "INS"
     assert "extra" not in df.columns
+
+
+def test_drug_molecules_dataset_columns_are_present() -> None:
+    part = _parquet_bytes(
+        pl.DataFrame(
+            {
+                "id": ["CHEMBL1201631"],
+                "name": ["insulin human"],
+                "drugType": ["Protein"],
+            }
+        )
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/"):
+            return httpx.Response(200, content=_dir_html(["part-00000.parquet"]))
+        return httpx.Response(200, content=part)
+
+    transport = httpx.MockTransport(handler)
+    with httpx.Client(transport=transport) as client:
+        df = fetch_dataset(client, "drug_molecule", OT_DRUG_MOLECULES_COLUMNS)
+
+    assert df.item(0, "id") == "CHEMBL1201631"
+    assert df.item(0, "name") == "insulin human"
+    assert df.item(0, "drugType") == "Protein"
+    assert set(df.columns) == set(OT_DRUG_MOLECULES_COLUMNS)
 
 
 def test_drugs_dataset_columns_are_present() -> None:
