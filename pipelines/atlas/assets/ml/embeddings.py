@@ -1,0 +1,201 @@
+"""Dagster asset: ESM-2 embeddings + UMAP + Qdrant indexing.
+
+Reads every protein sequence from MotherDuck dim_protein, batches through
+Modal's GPU inference function, projects embeddings to 2D with UMAP, and
+writes results to two sinks:
+  - MotherDuck atlas.main.fact_embedding (uniprot_accession, embedding[], umap_x/y)
+  - Qdrant Cloud proteins collection (cosine-similarity vector search)
+"""
+
+import hashlib
+import os
+import tempfile
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+import duckdb
+import modal
+import numpy as np
+import polars as pl
+import umap  # pyright: ignore[reportMissingTypeStubs]
+from dagster import AssetExecutionContext, MaterializeResult, MetadataValue, asset
+from numpy.typing import NDArray
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, PointStruct, VectorParams
+
+from atlas.logging import logger
+
+MODAL_APP_NAME = "atlas-esm2"
+MODAL_FN_NAME = "embed_batch"
+
+EMBEDDING_DIM = 1280
+BATCH_SIZE = 128
+MODEL_VERSION = "esm2_t33_650M"
+QDRANT_COLLECTION = "proteins"
+
+
+def accession_to_id(accession: str) -> int:
+    """Stable, positive uint64 Qdrant point ID derived from UniProt accession."""
+    digest = hashlib.sha256(accession.encode()).digest()
+    # Shift right by 1 to guarantee sign bit is 0 (positive int64 range).
+    return int.from_bytes(digest[:8], "big") >> 1
+
+
+def chunk(items: list[Any], size: int) -> list[list[Any]]:
+    """Split list into chunks of at most size, preserving order."""
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
+def build_embedding_df(
+    accessions: list[str],
+    embeddings: NDArray[np.float32],
+    coords: NDArray[np.float32],
+    was_truncated: list[bool],
+    computed_at: datetime,
+) -> pl.DataFrame:
+    """Assemble the fact_embedding DataFrame from computed arrays."""
+    return pl.DataFrame(
+        {
+            "uniprot_accession": accessions,
+            "embedding": pl.Series(
+                [row.tolist() for row in embeddings],
+                dtype=pl.List(pl.Float32),
+            ),
+            "umap_x": pl.Series(coords[:, 0].tolist(), dtype=pl.Float32),
+            "umap_y": pl.Series(coords[:, 1].tolist(), dtype=pl.Float32),
+            "model_version": pl.Series([MODEL_VERSION] * len(accessions)),
+            "was_truncated": was_truncated,
+            "computed_at": pl.Series([computed_at] * len(accessions)),
+        }
+    )
+
+
+@asset(group_name="ml", compute_kind="modal")
+def protein_embeddings(context: AssetExecutionContext) -> MaterializeResult[Any]:
+    """ESM-2 embeddings, UMAP 2D coords, and Qdrant index for all dim_protein rows.
+
+    Produces: fact_embedding in MotherDuck atlas.main and proteins collection in Qdrant.
+    Depends on: dim_protein (MotherDuck), embed_batch Modal GPU function.
+    Lands at: MotherDuck atlas.main.fact_embedding; Qdrant proteins collection.
+    """
+    token = os.environ["MOTHERDUCK_TOKEN"]
+    conn = duckdb.connect(f"md:atlas?motherduck_token={token}")
+
+    rows = conn.execute(
+        "SELECT uniprot_accession, gene_symbol, protein_name, sequence "
+        "FROM dim_protein WHERE sequence IS NOT NULL ORDER BY uniprot_accession"
+    ).fetchall()
+
+    accessions: list[str] = [r[0] for r in rows]
+    gene_symbols: list[str | None] = [r[1] for r in rows]
+    protein_names: list[str | None] = [r[2] for r in rows]
+    sequences: list[str] = [r[3] for r in rows]
+
+    context.log.info("Read %d sequences from dim_protein", len(accessions))
+
+    # --- Modal batch inference ---
+    # Look up the deployed function by name so we get the hydrated remote handle,
+    # not the local un-hydrated object that comes from a direct module import.
+    embed_fn: Any = modal.Function.from_name(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        MODAL_APP_NAME, MODAL_FN_NAME
+    )
+    sequence_batches: list[list[str]] = chunk(sequences, BATCH_SIZE)
+    all_embeddings: list[list[float]] = []
+    all_truncated: list[bool] = []
+    total_batches = len(sequence_batches)
+
+    for batch_idx, batch_result in enumerate(  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
+        embed_fn.map(sequence_batches)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+    ):
+        for emb, truncated in batch_result:  # pyright: ignore[reportUnknownVariableType]
+            all_embeddings.append(emb)  # pyright: ignore[reportUnknownArgumentType]
+            all_truncated.append(truncated)  # pyright: ignore[reportUnknownArgumentType]
+        logger.info("Modal batch %d/%d complete", batch_idx + 1, total_batches)
+
+    n_truncated = sum(all_truncated)
+    context.log.info("Inference done. %d/%d sequences truncated.", n_truncated, len(accessions))
+
+    # --- UMAP projection ---
+    embeddings_matrix = np.array(all_embeddings, dtype=np.float32)
+    context.log.info("Running UMAP on %s matrix …", embeddings_matrix.shape)
+    reducer = umap.UMAP(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        n_neighbors=15,
+        min_dist=0.1,
+        metric="cosine",
+        random_state=42,
+    )
+    raw_coords = reducer.fit_transform(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        embeddings_matrix
+    )
+    coords_2d: NDArray[np.float32] = np.asarray(  # pyright: ignore[reportUnknownArgumentType]
+        raw_coords, dtype=np.float32
+    )
+    context.log.info("UMAP done. Shape: %s", coords_2d.shape)
+
+    # --- Write to MotherDuck ---
+    # Write to a local temp Parquet, then CREATE TABLE AS SELECT * FROM read_parquet().
+    # Polars writes Parquet natively (no pyarrow). DuckDB memory-maps the file and
+    # sends it to MotherDuck in one round-trip — ~6 s vs 30+ min for executemany.
+    now = datetime.now(UTC)
+    df = build_embedding_df(accessions, embeddings_matrix, coords_2d, all_truncated, now)
+    _fd, _tmp = tempfile.mkstemp(suffix=".parquet")
+    os.close(_fd)
+    tmp_parquet = Path(_tmp)
+    try:
+        df.write_parquet(tmp_parquet)
+        parquet_path = tmp_parquet.as_posix()
+        conn.execute(
+            f"CREATE OR REPLACE TABLE fact_embedding AS "
+            f"SELECT * FROM read_parquet('{parquet_path}')"
+        )
+    finally:
+        tmp_parquet.unlink(missing_ok=True)
+    context.log.info("Written %d rows to MotherDuck fact_embedding", df.height)
+
+    # --- Upsert to Qdrant ---
+    qdrant = QdrantClient(
+        url=os.environ["QDRANT_URL"],
+        api_key=os.environ["QDRANT_API_KEY"],
+    )
+
+    if qdrant.collection_exists(QDRANT_COLLECTION):
+        qdrant.delete_collection(QDRANT_COLLECTION)
+
+    qdrant.create_collection(
+        collection_name=QDRANT_COLLECTION,
+        vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE),
+    )
+
+    for i in range(0, len(accessions), 1000):
+        batch_slice = slice(i, i + 1000)
+        batch_accs = accessions[batch_slice]
+        batch_embs = embeddings_matrix[batch_slice]
+        points = [
+            PointStruct(
+                id=accession_to_id(acc),
+                vector=emb.tolist(),
+                payload={
+                    "uniprot_accession": acc,
+                    "gene_symbol": gene_symbols[i + j],
+                    "protein_name": protein_names[i + j],
+                },
+            )
+            for j, (acc, emb) in enumerate(zip(batch_accs, batch_embs, strict=True))
+        ]
+        qdrant.upsert(collection_name=QDRANT_COLLECTION, points=points)
+
+    context.log.info(
+        "Upserted %d vectors to Qdrant collection '%s'", len(accessions), QDRANT_COLLECTION
+    )
+
+    return MaterializeResult(
+        metadata={
+            "num_proteins": MetadataValue.int(len(accessions)),
+            "num_truncated": MetadataValue.int(n_truncated),
+            "embedding_dim": MetadataValue.int(EMBEDDING_DIM),
+            "umap_shape": MetadataValue.text(str(coords_2d.shape)),
+            "model_version": MetadataValue.text(MODEL_VERSION),
+            "computed_at": MetadataValue.text(now.isoformat()),
+        }
+    )

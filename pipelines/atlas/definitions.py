@@ -15,7 +15,7 @@ from dagster import (
     load_assets_from_package_module,  # pyright: ignore[reportUnknownVariableType]
 )
 
-from atlas.assets import ingest
+from atlas.assets import ingest, ml
 from atlas.resources.r2 import R2Resource
 
 
@@ -38,7 +38,10 @@ def _load_env_local() -> None:
 _load_env_local()
 
 defs = Definitions(
-    assets=load_assets_from_package_module(ingest),
+    assets=[  # pyright: ignore[reportArgumentType]
+        *load_assets_from_package_module(ingest),
+        *load_assets_from_package_module(ml),
+    ],
     resources={
         "r2": R2Resource(
             account_id=EnvVar("CLOUDFLARE_ACCOUNT_ID"),
