@@ -208,9 +208,20 @@ try:
     assert isinstance(x, float) and isinstance(y, float), "x, y must be Python floats"
     # Full zip pattern used in md_rows comprehension
     first_row = next(
-        (acc, list(map(float, emb)), float(x), float(y), MODEL_VERSION, bool(trunc), datetime.now(UTC))  # noqa: E501
+        (
+            acc,
+            list(map(float, emb)),
+            float(x),
+            float(y),
+            MODEL_VERSION,
+            bool(trunc),
+            datetime.now(UTC),
+        )  # noqa: E501
         for acc, emb, (x, y), trunc in zip(
-            accessions[:1], embeddings_matrix[:1], coords_2d_list[:1], all_truncated_full[:1],
+            accessions[:1],
+            embeddings_matrix[:1],
+            coords_2d_list[:1],
+            all_truncated_full[:1],
             strict=True,
         )
     )
@@ -251,23 +262,24 @@ try:
 
     import polars as pl
 
-    df_pf = pl.DataFrame({
-        "uniprot_accession": accessions,
-        "embedding": pl.Series(
-            [row.tolist() for row in embeddings_matrix], dtype=pl.List(pl.Float32)
-        ),
-        "umap_x": pl.Series(fake_coords[:, 0].tolist(), dtype=pl.Float32),
-        "umap_y": pl.Series(fake_coords[:, 1].tolist(), dtype=pl.Float32),
-        "model_version": pl.Series([MODEL_VERSION] * n),
-        "was_truncated": all_truncated_full,
-        "computed_at": pl.Series([now] * n),
-    })
+    df_pf = pl.DataFrame(
+        {
+            "uniprot_accession": accessions,
+            "embedding": pl.Series(
+                [row.tolist() for row in embeddings_matrix], dtype=pl.List(pl.Float32)
+            ),
+            "umap_x": pl.Series(fake_coords[:, 0].tolist(), dtype=pl.Float32),
+            "umap_y": pl.Series(fake_coords[:, 1].tolist(), dtype=pl.Float32),
+            "model_version": pl.Series([MODEL_VERSION] * n),
+            "was_truncated": all_truncated_full,
+            "computed_at": pl.Series([now] * n),
+        }
+    )
     tmp_pq = Path(tempfile.mktemp(suffix=".parquet"))
     df_pf.write_parquet(tmp_pq)
     parquet_path = tmp_pq.as_posix()
     conn.execute(
-        f"CREATE OR REPLACE TABLE {_MD_TEMP_TABLE} AS "
-        f"SELECT * FROM read_parquet('{parquet_path}')"
+        f"CREATE OR REPLACE TABLE {_MD_TEMP_TABLE} AS SELECT * FROM read_parquet('{parquet_path}')"
     )
     tmp_pq.unlink(missing_ok=True)
     ok(f"Parquet write + CREATE TABLE ({n:,} rows via read_parquet)")
@@ -284,9 +296,7 @@ except Exception as exc:
     fail("read-back count query", str(exc))
 
 try:
-    emb_type = conn.execute(
-        f"SELECT typeof(embedding) FROM {_MD_TEMP_TABLE} LIMIT 1"
-    ).fetchone()[0]  # type: ignore[index]
+    emb_type = conn.execute(f"SELECT typeof(embedding) FROM {_MD_TEMP_TABLE} LIMIT 1").fetchone()[0]  # type: ignore[index]
     if "FLOAT" in emb_type.upper():
         ok(f"embedding column type: {emb_type}")
     else:
@@ -420,16 +430,18 @@ try:
     sample_rows = [
         (acc, list(map(float, emb)), float(x), float(y), MODEL_VERSION, bool(trunc), now)
         for acc, emb, (x, y), trunc in zip(
-            accessions[:5], embeddings_matrix[:5],
-            fake_coords.tolist()[:5], all_truncated_full[:5],
+            accessions[:5],
+            embeddings_matrix[:5],
+            fake_coords.tolist()[:5],
+            all_truncated_full[:5],
             strict=True,
         )
     ]
     assert len(sample_rows) == 5
-    assert sample_rows[0][0] == accessions[0]       # accession
+    assert sample_rows[0][0] == accessions[0]  # accession
     assert len(sample_rows[0][1]) == EMBEDDING_DIM  # embedding
-    assert isinstance(sample_rows[0][2], float)     # umap_x
-    assert isinstance(sample_rows[0][5], bool)      # was_truncated
+    assert isinstance(sample_rows[0][2], float)  # umap_x
+    assert isinstance(sample_rows[0][5], bool)  # was_truncated
     ok("md_rows tuple construction (5 rows sampled)")
 except Exception:
     fail("md_rows zip/unpack", traceback.format_exc())

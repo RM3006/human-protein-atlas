@@ -102,9 +102,7 @@ def _make_embedding_inputs(
 ) -> tuple[list[str], NDArray[np.float32], NDArray[np.float32], list[bool], datetime]:
     accessions = [f"P{i:05d}" for i in range(n)]
     embeddings: NDArray[np.float32] = np.zeros((n, EMBEDDING_DIM), dtype=np.float32)
-    coords: NDArray[np.float32] = np.tile(
-        np.arange(n, dtype=np.float32).reshape(-1, 1), (1, 2)
-    )
+    coords: NDArray[np.float32] = np.tile(np.arange(n, dtype=np.float32).reshape(-1, 1), (1, 2))
     was_truncated = [i % 2 == 0 for i in range(n)]
     now = datetime(2026, 1, 1, tzinfo=UTC)
     return accessions, embeddings, coords, was_truncated, now

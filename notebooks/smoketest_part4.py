@@ -178,17 +178,19 @@ fake_coords = np.zeros((len(accessions), 2), dtype=np.float32)
 now = datetime.now(UTC)
 
 try:
-    df = pl.DataFrame({
-        "uniprot_accession": accessions,
-        "embedding": pl.Series(
-            [row.tolist() for row in embeddings_matrix], dtype=pl.List(pl.Float32)
-        ),
-        "umap_x": pl.Series(fake_coords[:, 0].tolist(), dtype=pl.Float32),
-        "umap_y": pl.Series(fake_coords[:, 1].tolist(), dtype=pl.Float32),
-        "model_version": pl.Series([MODEL_VERSION] * len(accessions)),
-        "was_truncated": all_truncated,
-        "computed_at": pl.Series([now] * len(accessions)),
-    })
+    df = pl.DataFrame(
+        {
+            "uniprot_accession": accessions,
+            "embedding": pl.Series(
+                [row.tolist() for row in embeddings_matrix], dtype=pl.List(pl.Float32)
+            ),
+            "umap_x": pl.Series(fake_coords[:, 0].tolist(), dtype=pl.Float32),
+            "umap_y": pl.Series(fake_coords[:, 1].tolist(), dtype=pl.Float32),
+            "model_version": pl.Series([MODEL_VERSION] * len(accessions)),
+            "was_truncated": all_truncated,
+            "computed_at": pl.Series([now] * len(accessions)),
+        }
+    )
     _fd, _tmp = tempfile.mkstemp(suffix=".parquet")
     os.close(_fd)
     tmp_parquet = Path(_tmp)
@@ -196,8 +198,7 @@ try:
         df.write_parquet(tmp_parquet)
         parquet_path = tmp_parquet.as_posix()
         conn.execute(
-            f"CREATE OR REPLACE TABLE {_MD_TEMP} AS "
-            f"SELECT * FROM read_parquet('{parquet_path}')"
+            f"CREATE OR REPLACE TABLE {_MD_TEMP} AS SELECT * FROM read_parquet('{parquet_path}')"
         )
     finally:
         tmp_parquet.unlink(missing_ok=True)
@@ -217,6 +218,7 @@ try:
 except Exception:
     fail("MotherDuck write", traceback.format_exc())
     import contextlib
+
     with contextlib.suppress(Exception):
         conn.execute(f"DROP TABLE IF EXISTS {_MD_TEMP}")
 
@@ -244,9 +246,7 @@ try:
             vector=emb.tolist(),
             payload={"uniprot_accession": acc, "gene_symbol": gene},
         )
-        for acc, emb, gene in zip(
-            accessions, embeddings_matrix, gene_symbols, strict=True
-        )
+        for acc, emb, gene in zip(accessions, embeddings_matrix, gene_symbols, strict=True)
     ]
     qdrant.upsert(collection_name=_QD_TEMP, points=points)
 
@@ -282,6 +282,7 @@ try:
 except Exception:
     fail("Qdrant upsert/search", traceback.format_exc())
     import contextlib
+
     with contextlib.suppress(Exception):
         qdrant.delete_collection(_QD_TEMP)
 
