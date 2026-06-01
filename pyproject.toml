@@ -11,6 +11,10 @@ dependencies = [
     "boto3>=1.35",
     "dbt-duckdb>=1.9",
     "duckdb==1.5.2",
+    "modal>=0.70",
+    "umap-learn>=0.5.3",
+    "qdrant-client>=1.9",
+    "numpy>=1.26",
 ]
 
 [dependency-groups]
@@ -45,6 +49,9 @@ select = ["E", "F", "I", "UP", "B", "SIM", "TID"]
 
 [tool.pyright]
 include = ["pipelines/atlas"]
+# modal_esm2.py runs inside a Modal GPU container; torch/transformers are only
+# installed there, not locally. Excluding avoids hundreds of spurious import errors.
+exclude = ["pipelines/atlas/assets/ml/modal_esm2.py"]
 # `atlas` is the import name; its source lives in pipelines/atlas, so add
 # pipelines/ as a search root for resolution from source (not the editable stub).
 extraPaths = ["pipelines"]

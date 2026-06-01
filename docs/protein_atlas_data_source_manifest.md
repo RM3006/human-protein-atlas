@@ -529,11 +529,12 @@ CREATE TABLE fact_bioactivity (
 -- The ML output: ESM-2 embeddings + UMAP coords
 CREATE TABLE fact_embedding (
     uniprot_accession   VARCHAR PRIMARY KEY,
-    embedding           FLOAT[],                -- 1280-dim ESM-2 vector
-    umap_x              NUMERIC,
-    umap_y              NUMERIC,
-    model_version       VARCHAR,                -- "esm2_t33_650M_UR50D"
-    generated_at        TIMESTAMP
+    embedding           FLOAT[],                -- 1280-dim ESM-2 mean-pooled vector
+    umap_x              FLOAT,                  -- UMAP 2D projection (n_neighbors=15, cosine)
+    umap_y              FLOAT,
+    model_version       VARCHAR,                -- "esm2_t33_650M"
+    was_truncated       BOOLEAN,                -- TRUE if sequence was clipped to 1022 aa
+    computed_at         TIMESTAMP
 );
 ```
 

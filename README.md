@@ -140,6 +140,7 @@ See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_sourc
 │       ├── definitions.py                   # Dagster code location
 │       ├── logging.py                       # project logger
 │       ├── assets/ingest/                   # one module per source (uniprot.py)
+│       ├── assets/ml/                       # ESM-2 inference (Modal) + embeddings asset
 │       ├── resources/                       # shared resources (r2.py)
 │       └── tests/                           # fixture-based correctness tests
 ├── models/                                  # dbt project (sources, staging, marts)
@@ -190,18 +191,18 @@ uv run dagster dev -m atlas.definitions
 ## Status
 
 <!-- MAINTAINED: status -->
-**Current status**: Part 3 complete — star-schema warehouse built and tested in
-MotherDuck. 16 dbt models (8 staging views + 7 Gold tables + 1 story-card view)
-built from the 8 Bronze Parquet sources in R2. All 45 data tests pass; canonical
-`protein_story_card` query returns a complete row for insulin (P01308) and any
-long-tail protein.
+**Current status**: Part 4 complete — every reviewed human protein embedded and indexed.
+20,431 proteins embedded by ESM-2 `t33_650M` on Modal A10G GPU (2,302 sequences
+truncated to 1022 aa), projected to 2D via UMAP, written to MotherDuck
+`fact_embedding` and Qdrant `proteins` collection. EGFR's nearest neighbours are
+ERBB2 (#1) and ERBB3 (#2) — the model learned protein family structure.
 
 Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential parts:
 
 - [x] Part 1 — Foundation + UniProt ingest
 - [x] Part 2 — Remaining data sources
 - [x] Part 3 — dbt modeling
-- [ ] Part 4 — ESM-2 inference + UMAP + Qdrant
+- [x] Part 4 — ESM-2 inference + UMAP + Qdrant
 - [ ] Part 5 — LLM rewrites + curation
 - [ ] Part 6 — API + UI vertical slice
 - [ ] Part 7 — Polish: tour, amino acids, design pass
