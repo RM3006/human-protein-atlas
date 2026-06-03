@@ -3,7 +3,7 @@
 > A living atlas of every human protein — what it does, who it talks to, what goes wrong when it breaks — navigated by an AI that learned biology from sequence alone.
 
 <!-- MAINTAINED: links -->
-[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · **Status**: Part 3 complete (Bronze → Silver → Gold in MotherDuck)
+[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · **Status**: Part 4 complete — 20,431 proteins embedded and indexed
 <!-- /MAINTAINED -->
 
 <!-- MAINTAINED: hero -->
