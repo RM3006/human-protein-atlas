@@ -13,7 +13,14 @@ hpa AS (
     SELECT * FROM {{ ref('stg_hpa') }}
 ),
 editorial AS (
-    SELECT * FROM {{ ref('dim_protein_editorial') }}
+    -- chr(65533) = U+FFFD replacement character introduced by dbt-duckdb CSV seed loading.
+    -- Replace with proper em-dash (chr(8212) = U+2014) so the UI renders correctly.
+    SELECT
+        uniprot_accession,
+        REPLACE(tagline,           chr(65533), chr(8212)) AS tagline,
+        REPLACE(function_friendly, chr(65533), chr(8212)) AS function_friendly,
+        is_curated
+    FROM {{ ref('dim_protein_editorial') }}
 ),
 llm AS (
     SELECT * FROM {{ ref('stg_llm_rewrites') }}

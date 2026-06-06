@@ -3,7 +3,7 @@
 > A living atlas of every human protein — what it does, who it talks to, what goes wrong when it breaks — navigated by an AI that learned biology from sequence alone.
 
 <!-- MAINTAINED: links -->
-[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · **Status**: Part 4 complete — 20,431 proteins embedded and indexed
+[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · **Status**: Part 5 complete — every protein has a plain-English description
 <!-- /MAINTAINED -->
 
 <!-- MAINTAINED: hero -->
@@ -191,11 +191,11 @@ uv run dagster dev -m atlas.definitions
 ## Status
 
 <!-- MAINTAINED: status -->
-**Current status**: Part 4 complete — every reviewed human protein embedded and indexed.
-20,431 proteins embedded by ESM-2 `t33_650M` on Modal A10G GPU (2,302 sequences
-truncated to 1022 aa), projected to 2D via UMAP, written to MotherDuck
-`fact_embedding` and Qdrant `proteins` collection. EGFR's nearest neighbours are
-ERBB2 (#1) and ERBB3 (#2) — the model learned protein family structure.
+**Current status**: Part 5 complete — every protein has a plain-English description.
+20,431 proteins in `dim_protein`: 100 with hand-authored narratives from the
+curation list, 17,073 with Claude Haiku LLM-generated `function_friendly` and
+`tagline`, and 3,258 with no UniProt annotation showing "No information available".
+Spot-check: 20/20 sampled LLM rewrites rated 4–5/5, no invented claims detected.
 
 Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential parts:
 
@@ -203,7 +203,7 @@ Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential part
 - [x] Part 2 — Remaining data sources
 - [x] Part 3 — dbt modeling
 - [x] Part 4 — ESM-2 inference + UMAP + Qdrant
-- [ ] Part 5 — LLM rewrites + curation
+- [x] Part 5 — LLM rewrites + curation
 - [ ] Part 6 — API + UI vertical slice
 - [ ] Part 7 — Polish: tour, amino acids, design pass
 - [ ] Part 8 — Documentation + deploy
