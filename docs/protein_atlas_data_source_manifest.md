@@ -422,8 +422,8 @@ To make this concrete, here's what flows in for insulin specifically. This is th
 | Length | UniProt | `sequence.length` | `110` |
 | Sequence (for ESM-2) | UniProt | `sequence.value` | `MALWMRLLPLLALLALWGPDPAAAFV…` |
 | Family pill | UniProt | `dbReferences[type=Pfam].id` | `PF00049 (Ins)` |
-| Tagline (manual) | n/a — hand-written | curation list | "the hormone that tells your body what to do with sugar" |
-| Narrative (manual) | n/a — hand-written | story card author | 3–5 sentence paragraph |
+| Tagline | hand-written (top 100) / Claude Haiku (rest) | `dim_protein_editorial` seed / `stg_llm_rewrites` | "Insulin — the hormone that tells your body what to do with sugar; first protein ever sequenced" |
+| Function (friendly) | hand-written (top 100) / Claude Haiku (rest) | `dim_protein_editorial` seed / `stg_llm_rewrites` | "Insulin is the hormone your pancreas releases after meals…" |
 | Made in | HPA | `proteinatlas.tsv` → `Tissue expression` | `Tissue enhanced (pancreas)` |
 | Subcellular | HPA | `proteinatlas.tsv` → `Subcellular location` | `Vesicles, Golgi apparatus` |
 | Top partner 1 | STRING | `protein.links` filtered to `combined_score ≥ 700`, top by score | `INSR (0.99)` |

@@ -15,6 +15,12 @@ models:
       - name: sequence
         tests:
           - not_null
+      - name: function_friendly
+        description: "Plain-English rewrite of function_raw. NULL only if function_raw was absent and the protein is not curated."
+      - name: tagline
+        description: "One-sentence memorable description. NULL only if function_raw was absent and the protein is not curated."
+      - name: is_curated
+        description: "TRUE for the 100 hand-authored proteins in the editorial seed."
 
   - name: dim_disease
     description: "One row per EFO disease term from Open Targets."

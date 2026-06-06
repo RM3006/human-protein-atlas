@@ -1,0 +1,30 @@
+version: 2
+
+seeds:
+  - name: dim_protein_editorial
+    description: >
+      Hand-curated editorial content for the top 100 famous human proteins.
+      tagline and function_friendly are authored in docs/protein_atlas_curation_list.md.
+      Generate this file by running: python notebooks/generate_editorial_seed.py
+    config:
+      column_types:
+        uniprot_accession: varchar
+        tagline: varchar
+        function_friendly: varchar
+        is_curated: boolean
+    columns:
+      - name: uniprot_accession
+        description: "UniProt primary accession — join key."
+        tests:
+          - unique
+          - not_null
+      - name: tagline
+        description: "One-sentence memorable description; pre-written from the curation list."
+        tests:
+          - not_null
+      - name: function_friendly
+        description: "Plain-English narrative; authored in docs/protein_atlas_curation_list.md."
+      - name: is_curated
+        description: "Always TRUE for seed entries."
+        tests:
+          - not_null

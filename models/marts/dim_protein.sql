@@ -1,14 +1,29 @@
 {{ config(materialized='table') }}
 
 -- Protein dimension: one row per reviewed human protein.
--- Anchor table for the atlas — every fact table joins back here on uniprot_accession.
--- function_friendly, tagline, is_curated are populated in Part 5 (LLM rewrites).
+-- function_raw is the UniProt source text; NULL rows get 'No information available'.
+-- function_friendly and tagline: hand-curated editorial seed wins via COALESCE;
+-- LLM output (stg_llm_rewrites) fills the remaining ~20k proteins.
+-- is_curated = TRUE for the 100 proteins in the dim_protein_editorial seed.
 
 WITH uniprot AS (
     SELECT * FROM {{ ref('stg_uniprot') }}
 ),
 hpa AS (
     SELECT * FROM {{ ref('stg_hpa') }}
+),
+editorial AS (
+    -- chr(65533) = U+FFFD replacement character introduced by dbt-duckdb CSV seed loading.
+    -- Replace with proper em-dash (chr(8212) = U+2014) so the UI renders correctly.
+    SELECT
+        uniprot_accession,
+        REPLACE(tagline,           chr(65533), chr(8212)) AS tagline,
+        REPLACE(function_friendly, chr(65533), chr(8212)) AS function_friendly,
+        is_curated
+    FROM {{ ref('dim_protein_editorial') }}
+),
+llm AS (
+    SELECT * FROM {{ ref('stg_llm_rewrites') }}
 )
 
 SELECT
@@ -18,15 +33,17 @@ SELECT
     u.sequence_length,
     u.sequence,
     u.pfam_id,
-    u.function_raw,
-    CAST(NULL AS VARCHAR)       AS function_friendly,
-    CAST(NULL AS VARCHAR)       AS tagline,
-    FALSE                       AS is_curated,
+    COALESCE(u.function_raw, 'No information available')                                    AS function_raw,
+    COALESCE(editorial.function_friendly, llm.function_friendly, 'No information available') AS function_friendly,
+    COALESCE(editorial.tagline, llm.tagline, 'No information available')                      AS tagline,
+    editorial.uniprot_accession IS NOT NULL                     AS is_curated,
     u.ensembl_gene_id,
     u.string_protein_id,
-    CAST(NULL AS VARCHAR)       AS chembl_target_id,
+    CAST(NULL AS VARCHAR)                                        AS chembl_target_id,
     h.protein_class,
     h.subcellular_location,
-    CURRENT_TIMESTAMP           AS updated_at
+    CURRENT_TIMESTAMP                                            AS updated_at
 FROM uniprot u
-LEFT JOIN hpa h ON u.uniprot_accession = h.uniprot_accession
+LEFT JOIN hpa h         ON u.uniprot_accession = h.uniprot_accession
+LEFT JOIN editorial     ON u.uniprot_accession = editorial.uniprot_accession
+LEFT JOIN llm           ON u.uniprot_accession = llm.uniprot_accession
