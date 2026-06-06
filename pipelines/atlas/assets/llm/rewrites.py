@@ -39,6 +39,8 @@ MAX_TOKENS_PER_REQUEST = 600
 POLL_INTERVAL_SECONDS = 60
 
 R2_KEY_TEST = f"llm/v{LLM_VERSION}/protein_rewrites_test.parquet"
+R2_CHECKPOINT_KEY = f"llm/v{LLM_VERSION}/batch_checkpoint.json"
+R2_CHECKPOINT_KEY_TEST = f"llm/v{LLM_VERSION}/batch_checkpoint_test.json"
 
 
 class RewritesConfig(Config):
@@ -245,10 +247,20 @@ def protein_llm_rewrites(
         proteins = proteins[: config.limit]
         context.log.info("Smoke-test mode: limiting to %d proteins", config.limit)
 
+    # Skip proteins with no function_raw — the LLM would return null for them anyway.
+    # Pre-populate their results so they flow through to the 'No information available'
+    # fallback in dim_protein without burning API quota.
+    to_submit = [p for p in proteins if p[3] is not None]
+    n_skipped = len(proteins) - len(to_submit)
+    if n_skipped:
+        context.log.info(
+            "Skipping %d proteins with no function_raw (will be NULL in output)", n_skipped
+        )
+
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
     # Split into batches of MAX_BATCH_SIZE (Anthropic limit: 10 k per batch).
-    chunks = [proteins[i : i + MAX_BATCH_SIZE] for i in range(0, len(proteins), MAX_BATCH_SIZE)]
+    chunks = [to_submit[i : i + MAX_BATCH_SIZE] for i in range(0, len(to_submit), MAX_BATCH_SIZE)]
     batch_ids: list[str] = []
     for chunk_idx, chunk in enumerate(chunks):
         batch_id = _submit_batch(client, chunk)
@@ -261,12 +273,24 @@ def protein_llm_rewrites(
         )
         batch_ids.append(batch_id)
 
+    # Persist batch IDs to R2 before polling. If the Parquet write later fails,
+    # results stay retrievable from the Anthropic API for 29 days using these IDs.
+    checkpoint_key = R2_CHECKPOINT_KEY if config.limit is None else R2_CHECKPOINT_KEY_TEST
+    r2.write_json(
+        {"batch_ids": batch_ids, "submitted_at": datetime.now(UTC).isoformat()},
+        checkpoint_key,
+    )
+    context.log.info("Batch checkpoint written to R2 key %s", checkpoint_key)
+
     # Poll all batches until done.
     for batch_id in batch_ids:
         _poll_until_done(client, batch_id, context)
 
     # Collect results from all batches.
-    all_results: dict[str, tuple[str | None, str | None]] = {}
+    # Seed with NULLs for skipped proteins (no function_raw) — they were never submitted.
+    all_results: dict[str, tuple[str | None, str | None]] = {
+        p[0]: (None, None) for p in proteins if p[3] is None
+    }
     for batch_id in batch_ids:
         all_results.update(_collect_results(client, batch_id))
 

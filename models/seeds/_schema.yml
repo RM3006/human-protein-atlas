@@ -4,8 +4,7 @@ seeds:
   - name: dim_protein_editorial
     description: >
       Hand-curated editorial content for the top 100 famous human proteins.
-      tagline is pre-written from the curation list.
-      function_friendly is hand-authored during Part 5 and starts NULL.
+      tagline and function_friendly are authored in docs/protein_atlas_curation_list.md.
       Generate this file by running: python notebooks/generate_editorial_seed.py
     config:
       column_types:
@@ -24,7 +23,7 @@ seeds:
         tests:
           - not_null
       - name: function_friendly
-        description: "Plain-English narrative; hand-authored in Part 5. NULL until written."
+        description: "Plain-English narrative; authored in docs/protein_atlas_curation_list.md."
       - name: is_curated
         description: "Always TRUE for seed entries."
         tests:

@@ -9,6 +9,7 @@ CSV, in pipelines).
 from __future__ import annotations
 
 import io
+import json
 from typing import TYPE_CHECKING
 
 import boto3
@@ -65,6 +66,13 @@ class R2Resource(ConfigurableResource):  # pyright: ignore[reportMissingTypeArgu
     def count_rows(self, key: str) -> int:
         """Row count of the Parquet object at ``bucket/key``."""
         return self.read_parquet(key).height
+
+    def write_json(self, data: object, key: str) -> None:
+        """Serialize ``data`` to JSON and upload to ``bucket/key`` (overwrites)."""
+        body = json.dumps(data, default=str).encode("utf-8")
+        self._client().put_object(
+            Bucket=self.bucket, Key=key, Body=body, ContentType="application/json"
+        )
 
     def exists(self, key: str) -> bool:
         """Return True if ``bucket/key`` exists in R2."""
