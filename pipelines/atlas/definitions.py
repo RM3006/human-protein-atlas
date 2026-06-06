@@ -15,7 +15,7 @@ from dagster import (
     load_assets_from_package_module,  # pyright: ignore[reportUnknownVariableType]
 )
 
-from atlas.assets import ingest, ml
+from atlas.assets import ingest, llm, ml
 from atlas.resources.r2 import R2Resource
 
 
@@ -41,6 +41,7 @@ defs = Definitions(
     assets=[  # pyright: ignore[reportArgumentType]
         *load_assets_from_package_module(ingest),
         *load_assets_from_package_module(ml),
+        *load_assets_from_package_module(llm),
     ],
     resources={
         "r2": R2Resource(

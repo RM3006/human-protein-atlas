@@ -34,6 +34,10 @@ infra/**/.terraform/
 *.tfplan
 crash.log
 
+# Scratch scripts (credentials, experiments)
+claude_api_test_script.py
+smoke_test_config.yaml
+
 # OS / editor
 .DS_Store
 Thumbs.db

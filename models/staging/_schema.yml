@@ -83,3 +83,16 @@ models:
         tests:
           - unique
           - not_null
+
+  - name: stg_llm_rewrites
+    description: "Claude Haiku plain-English rewrites of UniProt function text for all ~20k proteins. Written by the protein_llm_rewrites Dagster asset."
+    columns:
+      - name: uniprot_accession
+        description: "UniProt primary accession — join key."
+        tests:
+          - unique
+          - not_null
+      - name: function_friendly
+        description: "Plain-English rewrite. NULL if function_raw was absent."
+      - name: tagline
+        description: "One-sentence summary. NULL if function_raw was absent."

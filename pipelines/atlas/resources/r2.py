@@ -12,6 +12,7 @@ import io
 from typing import TYPE_CHECKING
 
 import boto3
+import botocore.exceptions
 import polars as pl
 from botocore.config import Config
 from dagster import ConfigurableResource
@@ -64,3 +65,14 @@ class R2Resource(ConfigurableResource):  # pyright: ignore[reportMissingTypeArgu
     def count_rows(self, key: str) -> int:
         """Row count of the Parquet object at ``bucket/key``."""
         return self.read_parquet(key).height
+
+    def exists(self, key: str) -> bool:
+        """Return True if ``bucket/key`` exists in R2."""
+        try:
+            self._client().head_object(Bucket=self.bucket, Key=key)
+            return True
+        except botocore.exceptions.ClientError as e:
+            code: str = e.response["Error"]["Code"]  # pyright: ignore[reportTypedDictNotRequiredAccess]
+            if code in ("404", "NoSuchKey"):
+                return False
+            raise
