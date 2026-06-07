@@ -42,9 +42,9 @@ import duckdb  # noqa: E402
 import polars as pl  # noqa: E402
 from atlas.assets.llm.rewrites import (  # noqa: E402
     R2_KEY,
-    _collect_results,
-    _poll_until_done,
-    _submit_batch,
+    _collect_results,  # pyright: ignore[reportPrivateUsage] -- one-shot script, reusing the asset's batch helpers
+    _poll_until_done,  # pyright: ignore[reportPrivateUsage]
+    _submit_batch,  # pyright: ignore[reportPrivateUsage]
     build_rewrite_df,
     parse_rewrite,
 )
@@ -94,7 +94,7 @@ candidates = {
 
 checkpoint_obj = io.BytesIO()
 checkpoint_obj.write(
-    r2._client()  # noqa: SLF001 -- one-shot script, reusing the resource's authenticated client
+    r2._client()  # noqa: SLF001 -- one-shot script, reusing the resource's authenticated client  # pyright: ignore[reportPrivateUsage]
     .get_object(Bucket="atlas-raw", Key="llm/v2026_06/batch_checkpoint.json")["Body"]
     .read()
 )
