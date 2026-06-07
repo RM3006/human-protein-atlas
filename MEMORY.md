@@ -633,3 +633,52 @@ data).
 `docs/protein_atlas_data_source_manifest.md` (corrected the wrong "insulin →
 Humulin/Lispro/Glargine" worked-example + "Drugs that work with it" framing —
 drugs map to INSR, not INS), `README.md` (features: clickable cross-references).
+
+---
+
+## protein_story_card: VARCHAR lists → LIST(STRUCT) (2026-06-07, complete)
+
+### Decision
+
+Reshaped `top_interaction_partners`, `top_diseases`, and `approved_drugs` in
+`models/queries/protein_story_card.sql` from `LIST(VARCHAR)` of baked
+`"name (score)"` display strings to `LIST(STRUCT(...))` with typed fields
+(`accession`/`efo_id`/`chembl_id`, a human-readable name, and the numeric
+score/phase). DuckDB serializes struct lists to JSON arrays of objects, so
+FastAPI/Streamlit get parsed fields directly — no string-splitting in the UI
+layer.
+
+### Why
+
+User asked, ahead of Part 6, whether the `LIST(VARCHAR)` shape from Part 3
+("`P06213 (0.650)`", `"name (score)"`) was fit for Streamlit. Two concrete
+problems found by checking live data:
+
+1. **8,119 of `dim_disease`'s rows have parentheses in `disease_name` itself**
+   (e.g. `"peroxisome biogenesis disorder 1A (Zellweger)"` →
+   `"... (Zellweger) (0.234)"`). A naive `split('(')` to recover the score
+   breaks; only a regex anchored on the numeric tail survives, and that's
+   string-surgery for data that started out structured in SQL.
+2. **`top_interaction_partners` carried only the bare accession** (`P06213`),
+   not a display name — the opposite of what the new ligand→receptor→drug
+   design rule needs: a clickable link (accession) *and* a friendly label
+   (`gene_symbol`/`protein_name`) in the same row, without a second lookup.
+
+While in there, also capped `approved_drugs` at top-5 by `max_phase DESC`
+(previously unbounded `LIST(DISTINCT drug_name)`): checked live data and found
+346 proteins have >5 phase>=3 drugs (DRD2/`P14416` has 97). The Part 6 design
+rule already promises "top few by clinical phase" — the cap now lives in the
+query, not left for the UI to truncate.
+
+### How to apply
+
+Final shapes (verified against insulin P01308 and EGFR P00533):
+- `top_interaction_partners`: `{accession, gene_symbol, protein_name, combined_score}`
+- `top_diseases`: `{efo_id, disease_name, overall_score}`
+- `approved_drugs`: `{chembl_id, drug_name, max_phase}`, top 5 by phase
+
+Insulin's `approved_drugs` is `NULL` (LIST aggregate over zero rows) — same as
+before; the UI must treat `NULL`/empty the same way (`for x in (data or [])`).
+Rebuilt (`dbt run --select protein_story_card`) and spot-checked live; no
+schema/test file exists for this query (it's a parametrized `models/queries/`
+view, not a mart — `_schema.yml` doesn't cover it).
