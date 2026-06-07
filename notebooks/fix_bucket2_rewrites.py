@@ -77,9 +77,7 @@ conn = duckdb.connect(f"md:atlas?motherduck_token={token}")
 # there, cross-referenced with dim_protein for a substantive function_raw.
 rewrites = r2.read_parquet(R2_KEY)
 null_rewrite_accessions = (
-    rewrites.filter(pl.col("function_friendly").is_null())
-    .get_column("uniprot_accession")
-    .to_list()
+    rewrites.filter(pl.col("function_friendly").is_null()).get_column("uniprot_accession").to_list()
 )
 placeholders_c = ",".join("?" * len(null_rewrite_accessions))
 candidates = {
