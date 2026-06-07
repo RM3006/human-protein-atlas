@@ -16,9 +16,13 @@ models:
         tests:
           - not_null
       - name: function_friendly
-        description: "Plain-English rewrite of function_raw. NULL only if function_raw was absent and the protein is not curated."
+        description: "Plain-English rewrite of function_raw — editorial > LLM > raw > 'No information available', via COALESCE. Never NULL by construction; pinned here so a future COALESCE edit can't silently reintroduce nulls into the UI."
+        tests:
+          - not_null
       - name: tagline
-        description: "One-sentence memorable description. NULL only if function_raw was absent and the protein is not curated."
+        description: "One-sentence memorable description — editorial > LLM > 'No information available', via COALESCE. Never NULL by construction; pinned here so a future COALESCE edit can't silently reintroduce nulls into the UI."
+        tests:
+          - not_null
       - name: is_curated
         description: "TRUE for the 100 hand-authored proteins in the editorial seed."
 
@@ -48,6 +52,7 @@ models:
     columns:
       - name: uniprot_accession
         tests:
+          - unique
           - not_null
           - relationships:
               arguments:
@@ -113,3 +118,10 @@ models:
               arguments:
                 to: ref('dim_protein')
                 field: uniprot_accession
+      - name: efo_id
+        description: "EFO/MONDO/... disease ID extracted from the diseases STRUCT list. NULL where the source struct's diseaseId is absent — not invented (CLAUDE.md rule 5)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_disease')
+                field: efo_id

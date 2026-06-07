@@ -174,6 +174,8 @@ So one STRING interaction row, after joining the aliases twice, becomes a `(unip
 
 **Filtering**: STRING ships with everything. For the story card, keep only edges with `combined_score >= 700` (the "high confidence" threshold STRING itself recommends), and for each protein keep the top 5 partners. That collapses 11.7M edges to roughly 100,000 useful ones.
 
+**Grain in `fact_interaction`**: STRING reports each interaction symmetrically (A↔B and B↔A), and paralogous gene families (histones, HLA, …) resolve many distinct STRING/Ensembl gene entries onto a single UniProt accession (e.g. P62805/Histone H4 ← 14 Ensembl genes). Both effects fan a raw join out into "X interacts with X" self-loops and the same biological pair counted multiple times. The mart canonicalizes to **one row per unordered pair** — `uniprot_a = LEAST(...)`, `uniprot_b = GREATEST(...)`, `combined_score = MAX(...)` across any duplicate evidence — rather than inventing or arbitrarily picking one of several raw scores.
+
 ### License, cadence, volume
 
 - **License**: CC-BY 4.0. Attribution required.
@@ -327,6 +329,10 @@ Open Targets row:    ENSG00000254647  ←  disease  ←  drug
 ```
 
 For every target row, OT *already includes* a `proteinIds` list. You don't need to call UniProt's id-mapping service — the OT file itself contains the UniProt accession. This is the cleanest cross-reference in the whole manifest.
+
+**Grain in `fact_protein_disease`**: ~70 UniProt accessions are the canonical target of *multiple* distinct Ensembl gene IDs (the same paralog-family effect as STRING — histones, HLA, …). Each paralog copy carries its own OT association score for the same disease, so a naive join fans out into duplicate `(protein, disease)` rows. The mart aggregates via `MAX(overall_score) GROUP BY uniprot_accession, efo_id` — the strongest evidence across paralogs for this protein identity — producing **one row per `(protein, disease)` pair**.
+
+**`disease_ids` is a `STRUCT(diseaseFromSource, diseaseId)` list, not a plain ID list**: `clinical_target.diseases` must be unnested and reduced to `.diseaseId` (the EFO/MONDO/… ID that joins `dim_disease.efo_id`). `diseaseFromSource` is the free-text label and is dropped in `fact_drug_target_disease`.
 
 ### License, cadence, volume
 
@@ -482,10 +488,12 @@ CREATE TABLE fact_protein_tissue (
 );
 
 -- Interactions from STRING
+-- Grain: one row per unordered pair (uniprot_a < uniprot_b), no self-loops —
+-- canonicalized at the mart layer (see "How it joins" above for why).
 CREATE TABLE fact_interaction (
-    uniprot_a           VARCHAR,                -- FK to dim_protein
-    uniprot_b           VARCHAR,                -- FK to dim_protein
-    combined_score      INTEGER                 -- 0-1000
+    uniprot_a           VARCHAR,                -- FK to dim_protein, LEAST(a, b)
+    uniprot_b           VARCHAR,                -- FK to dim_protein, GREATEST(a, b)
+    combined_score      INTEGER                 -- 0-1000, MAX across paralog/symmetric duplicates
 );
 
 -- Diseases (dimension), one row per EFO term
@@ -496,10 +504,12 @@ CREATE TABLE dim_disease (
 );
 
 -- Protein-disease association from Open Targets
+-- Grain: one row per (protein, disease) pair — paralog duplicates collapsed
+-- via MAX(overall_score) at the mart layer (see "How it joins" above).
 CREATE TABLE fact_protein_disease (
     uniprot_accession   VARCHAR,                -- FK
     efo_id              VARCHAR,                -- FK
-    overall_score       NUMERIC                 -- 0-1
+    overall_score       NUMERIC                 -- 0-1, MAX across paralog duplicates
 );
 
 -- Drugs (dimension)
@@ -511,10 +521,13 @@ CREATE TABLE dim_drug (
 );
 
 -- Drug-target-disease triples from Open Targets
+-- efo_id is extracted as `UNNEST(disease_ids).diseaseId` from clinical_target's
+-- list-of-STRUCT(diseaseFromSource, diseaseId) — not the raw struct (see
+-- Open Targets "How it joins" above). Joins dim_disease.efo_id at ~100%.
 CREATE TABLE fact_drug_target_disease (
     chembl_id           VARCHAR,                -- FK
     uniprot_accession   VARCHAR,                -- FK
-    efo_id              VARCHAR,                -- FK
+    efo_id              VARCHAR,                -- FK, extracted .diseaseId (nullable)
     mechanism_of_action VARCHAR
 );
 

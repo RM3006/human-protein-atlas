@@ -1,9 +1,12 @@
 {{ config(materialized='table') }}
 
 -- Drug-target-disease triples from Open Targets clinical_target (v26.03).
--- The `diseases` list in clinical_target is unnested here; each row is one
--- (drug, protein, disease) triple. mechanism_of_action is not in clinical_target
--- and is left NULL for v1 (available from drug_mechanism_of_action in v2).
+-- The `diseases` list in clinical_target is a list of STRUCT(diseaseFromSource,
+-- diseaseId) — unnested here and reduced to diseaseId (the EFO/MONDO/... ID that
+-- joins to dim_disease.efo_id; diseaseFromSource is the free-text label and is
+-- dropped). Each row is one (drug, protein, disease) triple. mechanism_of_action
+-- is not in clinical_target and is left NULL for v1 (available from
+-- drug_mechanism_of_action in v2).
 
 WITH targets AS (
     SELECT ensembl_gene_id, uniprot_accession
@@ -20,7 +23,7 @@ drugs_exploded AS (
     SELECT
         chembl_id,
         ensembl_gene_id,
-        UNNEST(disease_ids) AS efo_id
+        UNNEST(disease_ids).diseaseId AS efo_id
     FROM {{ ref('stg_ot_drugs') }}
     WHERE disease_ids IS NOT NULL
 )
