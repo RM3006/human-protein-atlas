@@ -81,7 +81,17 @@ models:
           - not_null
 
   - name: fact_protein_disease
-    description: "Open Targets gene-disease scores for human proteins."
+    description: >
+      Open Targets gene-disease association scores for human proteins, one row
+      per (protein, disease). overall_score is a weight-of-evidence measure in
+      [0.1, 1] — NOT a probability. The raw OT score starts at ~0 and is heavily
+      right-skewed (median ~0.02); rows below 0.1 are dropped at the mart layer
+      because that trace tail is unrankable noise (e.g. a single text-mining
+      co-mention), which would otherwise inflate the table to 4.3M rows and let a
+      naive COUNT read EGFR as "~2,600 diseases". The 0.1 floor keeps ~16% of
+      rows yet only 5% of proteins lose all links; the UI shows the top few per
+      protein by score. See the model header and
+      assert_fact_protein_disease_overall_score_range for the enforced contract.
     columns:
       - name: uniprot_accession
         tests:

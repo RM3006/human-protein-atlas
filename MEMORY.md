@@ -375,7 +375,8 @@ data would just be red noise") and **"no `dbt_utils` — custom singular SQL onl
    root cause as #2 — ~70 UniProt accessions are the canonical target of multiple
    Ensembl genes, so each carries its own OT association score for the same
    disease. Fixed with the same `MAX(overall_score) GROUP BY 1,2` pattern.
-   Result: 4,346,458 rows, **0 duplicate pairs**.
+   Result: 4,346,458 rows, **0 duplicate pairs**. (Later reduced to 697,330 rows
+   by the `overall_score >= 0.1` floor — see the score-floor section below.)
 4. **`dim_drug.max_phase` degenerate mapping (P1)**: the `CASE` matched
    `'PHASE3'` etc. but OT v26.03's raw values use underscores (`'PHASE_3'`), and a
    silent `ELSE TRY_CAST(...)` swallowed every mismatch to `NULL` or `4` — yielding
@@ -407,7 +408,8 @@ identity) is the root cause behind two of the three P0s — not two unrelated bu
   `assert_fact_interaction_canonical_unique_pairs` (mis-ordering + duplicates in
   one test), `assert_fact_protein_disease_unique_pairs`,
   `assert_fact_interaction_combined_score_range` ([700, 1000]),
-  `assert_fact_protein_disease_overall_score_range` ([0, 1]),
+  `assert_fact_protein_disease_overall_score_range` (later tightened [0, 1] →
+  [0.1, 1] when the score floor was added — see the score-floor section below),
   `assert_dim_drug_max_phase_range` ([0, 4] or NULL).
 
 ### Result
@@ -537,3 +539,50 @@ failing): all 9 resolved correctly (`stg_hpa` 19,179 rows … `stg_ot_associatio
 
 Staging-view 404s eliminated for *all* sessions, not just dbt's. `dbt run`
 17/17, `dbt test` 65/65, `ruff`/`pyright` clean on the new script.
+
+---
+
+## fact_protein_disease score floor `>= 0.1` (2026-06-07, complete)
+
+### Decision
+
+Added `HAVING MAX(a.overall_score) >= 0.1` to `models/marts/fact_protein_disease.sql`.
+Surfaced during a biological review of `atlas.main`: the table was 4.3M rows but
+its OT association `overall_score` is a *weight-of-evidence* measure (not a
+probability/effect size) with a brutally right-skewed distribution — median
+~0.02, mean ~0.06 — because Open Targets surfaces every faint signal (single
+text-mining co-mentions, lone underpowered GWAS hits). Unfiltered, a naive
+`COUNT` reads EGFR as "associated with ~2,600 diseases", and **54% of proteins
+had an association but not one reaching 0.5**. The score is right-skewed because
+a single evidence channel tops out around ~0.5; exceeding that needs multiple
+independent channels agreeing, so ~0.1 cleanly cuts the pure-noise tail.
+
+### Impact (measured before applying)
+
+4,346,458 → **697,330 rows (16.0% kept; ~3.65M trace rows dropped)**. Only
+**992 of 19,215 proteins (5%) lose ALL associations** — 95% keep ≥1 real link.
+Diseases referenced 26,235 → 21,717.
+
+### Why lossy-in-the-mart, not document-only
+
+User chose the mart floor over keep-raw-+-caveat. Accepted tradeoff: a future
+score `< 0.1` cannot be recovered without a rebuild. Justified because nothing
+below 0.1 is ever actionable for ranking/display, and **the UI shows only the
+top few associations per protein by score** — so no usable data is lost. (The
+companion UI decision: story card ranks by `overall_score DESC` and shows the
+top few; the protein_story_card query already does `ORDER BY overall_score DESC
+LIMIT 5`.)
+
+### Test (TDD)
+
+Tightened `assert_fact_protein_disease_overall_score_range` from `[0, 1]` to
+`[0.1, 1]` — ran red first (3,649,128 violating rows = 4.35M − 0.70M, confirming
+the floor wasn't yet applied), then added the `HAVING` and reran green. The test
+now enforces the floor as a contract: any row `< 0.1` means the filter was
+removed/bypassed. `dbt test --select fact_protein_disease`: **7/7 PASS** (floor +
+unique-pairs grain + not_null ×2 + relationships ×2).
+
+### Docs updated (same commit)
+
+`models/marts/_schema.yml` (description), `docs/protein_atlas_data_source_manifest.md`
+(grain note + DDL comment + the "ot_associations_raw is large" gotcha).

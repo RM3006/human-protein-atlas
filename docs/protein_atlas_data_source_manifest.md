@@ -332,6 +332,8 @@ For every target row, OT *already includes* a `proteinIds` list. You don't need 
 
 **Grain in `fact_protein_disease`**: ~70 UniProt accessions are the canonical target of *multiple* distinct Ensembl gene IDs (the same paralog-family effect as STRING — histones, HLA, …). Each paralog copy carries its own OT association score for the same disease, so a naive join fans out into duplicate `(protein, disease)` rows. The mart aggregates via `MAX(overall_score) GROUP BY uniprot_accession, efo_id` — the strongest evidence across paralogs for this protein identity — producing **one row per `(protein, disease)` pair**.
 
+**Score floor in `fact_protein_disease` (`overall_score >= 0.1`)**: the OT `associationScore` is a *weight-of-evidence* measure in `[0, 1]` — **not a probability and not an effect size**. Its raw distribution across human pairs is brutally right-skewed (median ~0.02, mean ~0.06) because OT surfaces every faint signal: a single text-mining co-mention or one underpowered GWAS hit produces a low-but-nonzero score. A single evidence channel tops out around ~0.5; clearing that needs *multiple independent channels agreeing*, so ~0.1 cleanly separates "at least one real signal" from pure noise. Keeping the full tail makes the table **4.3M rows of mostly noise** — a naive `COUNT` reports e.g. EGFR as "associated with ~2,600 diseases", and 54% of proteins have an association yet not one reaching 0.5. The mart therefore applies `HAVING MAX(overall_score) >= 0.1`, which keeps **697,330 of 4,346,458 rows (16%)** while only **992 of 19,215 proteins (5%) lose all associations** — 95% retain at least one real link. This is a deliberate, **lossy** quality filter (a future score `< 0.1` cannot be recovered without a rebuild), justified because nothing below 0.1 is ever actionable: the story card ranks by `overall_score DESC` and shows only the top few per protein. The floor is enforced as a contract by the singular test `assert_fact_protein_disease_overall_score_range` (now `[0.1, 1]`, not `[0, 1]`).
+
 **`disease_ids` is a `STRUCT(diseaseFromSource, diseaseId)` list, not a plain ID list**: `clinical_target.diseases` must be unnested and reduced to `.diseaseId` (the EFO/MONDO/… ID that joins `dim_disease.efo_id`). `diseaseFromSource` is the free-text label and is dropped in `fact_drug_target_disease`.
 
 ### License, cadence, volume
@@ -346,7 +348,7 @@ For every target row, OT *already includes* a `proteinIds` list. You don't need 
 - **EFO disease IDs are hierarchical.** `EFO_0001359` (type 1 diabetes) has parents like `EFO_0000400` (diabetes mellitus). For display, use the most specific term; for filtering, you may want to walk the parent chain.
 - **The `association_overall_direct` vs `association_by_datasource_direct` distinction**: `overall` aggregates across all evidence sources, `datasource` keeps each source separate. For the story card, `overall` is what you want.
 - **`ot_targets_raw` contains all species** (78,691 rows), not just human. The dbt staging layer filters to human proteins by joining on `uniprot_accession` from the UniProt Bronze asset.
-- **`ot_associations_raw` is large** (4.5M rows, all species/disease combinations). After filtering to the ~20k human proteins, the working set shrinks substantially.
+- **`ot_associations_raw` is large** (4.5M rows, all species/disease combinations). After filtering to the ~20k human proteins, the working set is ~4.3M (protein, disease) pairs — but most are trace-level noise. `fact_protein_disease` then applies an `overall_score >= 0.1` floor that drops ~84% of those rows (down to ~697k); see the **score floor** note under "How it joins" above for the full rationale.
 - **Drug names are not in `clinical_target`**. Join `ot_drugs_raw` with `drug_molecule/` on `drugId` in the Silver layer to get display names.
 
 ---
@@ -506,10 +508,12 @@ CREATE TABLE dim_disease (
 -- Protein-disease association from Open Targets
 -- Grain: one row per (protein, disease) pair — paralog duplicates collapsed
 -- via MAX(overall_score) at the mart layer (see "How it joins" above).
+-- Rows with MAX(overall_score) < 0.1 are dropped (trace-noise floor; ~84% of
+-- raw pairs, see the "score floor" note under "How it joins").
 CREATE TABLE fact_protein_disease (
     uniprot_accession   VARCHAR,                -- FK
     efo_id              VARCHAR,                -- FK
-    overall_score       NUMERIC                 -- 0-1, MAX across paralog duplicates
+    overall_score       NUMERIC                 -- 0.1-1, MAX across paralog duplicates
 );
 
 -- Drugs (dimension)
