@@ -58,7 +58,10 @@ SYSTEM_PROMPT = (
     "   Explain what the protein does in the body.\n"
     "   Gloss any jargon immediately. Assume the reader has high-school biology.\n"
     "4. tagline: one punchy sentence, ≤20 words, capturing the single most memorable role.\n"
-    '5. Return ONLY valid JSON with exactly two keys: "function_friendly" and "tagline".'
+    "5. Never use double quotation marks inside the function_friendly or tagline text"
+    " — they break JSON parsing. For emphasis or naming (e.g. a state, mode, or nickname),"
+    " use single quotes ('like this') or rephrase without quotation marks entirely.\n"
+    '6. Return ONLY valid JSON with exactly two keys: "function_friendly" and "tagline".'
     " No markdown, no preamble."
 )
 
