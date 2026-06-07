@@ -32,6 +32,7 @@ The atlas demonstrates end-to-end data engineering on a substantive domain. A re
 <!-- MAINTAINED: features -->
 - Maps ~20,000 human proteins to a 2D atlas using ESM-2 `t33_650M` embeddings and UMAP.
 - Renders a plain-English story card for any protein: what it does, where in the body, who it talks to, what goes wrong when broken, which drugs target it.
+- Story-card cross-references are clickable: jump from a protein to its interaction partners or drug targets (e.g. insulin → its receptor INSR, where the insulin therapies live — drugs attach to the molecular target, not the ligand).
 - Hand-written narratives for the top 100 culturally famous proteins (insulin, hemoglobin, EGFR, TP53, BRCA1, CFTR, etc.); LLM-generated rewrites for the remaining ~20,000.
 - Nearest-neighbor search by sequence — any protein sequence can be dropped in to find its closest matches in the human proteome.
 - Searchable by gene symbol, UniProt accession, or protein name.

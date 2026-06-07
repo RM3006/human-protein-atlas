@@ -67,7 +67,7 @@ models:
           - not_null
 
   - name: stg_ot_drugs
-    description: "Open Targets drug-target-disease triples from clinical_target (v26.03). max_clinical_stage_raw is a string category (APPROVAL, PHASE3, etc.) mapped to numeric in dim_drug."
+    description: "Open Targets drug-target-disease triples from clinical_target (v26.03). max_clinical_stage_raw is a string category (APPROVAL, PHASE_3, etc.) mapped to numeric in dim_drug."
     columns:
       - name: chembl_id
         tests:
@@ -75,6 +75,24 @@ models:
       - name: ensembl_gene_id
         tests:
           - not_null
+      - name: max_clinical_stage_raw
+        description: "Raw OT clinical-stage category. Enumerated so a new/renamed category from OT fails this test loudly instead of silently becoming NULL in dim_protein.max_phase (CLAUDE.md: never silently coerce)."
+        tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - APPROVAL
+                  - PHASE_3
+                  - PHASE_2_3
+                  - PHASE_2
+                  - PHASE_1_2
+                  - PHASE_1
+                  - EARLY_PHASE_1
+                  - IND
+                  - PREAPPROVAL
+                  - PRECLINICAL
+                  - UNKNOWN
+                quote: true
 
   - name: stg_ot_drug_molecules
     description: "Open Targets drug molecule metadata — preferred names and modality."

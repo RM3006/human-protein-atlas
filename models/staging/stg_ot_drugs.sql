@@ -11,5 +11,5 @@ SELECT
     diseases        AS disease_ids,
     maxClinicalStage AS max_clinical_stage_raw
 FROM read_parquet(
-    's3://{{ var("r2_bucket") }}/opentargets/v{{ var("ot_version") }}/ot_drugs.parquet'
+    'r2://{{ var("r2_bucket") }}/opentargets/v{{ var("ot_version") }}/ot_drugs.parquet'
 )

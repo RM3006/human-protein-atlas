@@ -16,9 +16,13 @@ models:
         tests:
           - not_null
       - name: function_friendly
-        description: "Plain-English rewrite of function_raw. NULL only if function_raw was absent and the protein is not curated."
+        description: "Plain-English rewrite of function_raw — editorial > LLM > raw > 'No information available', via COALESCE. Never NULL by construction; pinned here so a future COALESCE edit can't silently reintroduce nulls into the UI."
+        tests:
+          - not_null
       - name: tagline
-        description: "One-sentence memorable description. NULL only if function_raw was absent and the protein is not curated."
+        description: "One-sentence memorable description — editorial > LLM > 'No information available', via COALESCE. Never NULL by construction; pinned here so a future COALESCE edit can't silently reintroduce nulls into the UI."
+        tests:
+          - not_null
       - name: is_curated
         description: "TRUE for the 100 hand-authored proteins in the editorial seed."
 
@@ -48,6 +52,7 @@ models:
     columns:
       - name: uniprot_accession
         tests:
+          - unique
           - not_null
           - relationships:
               arguments:
@@ -76,7 +81,17 @@ models:
           - not_null
 
   - name: fact_protein_disease
-    description: "Open Targets gene-disease scores for human proteins."
+    description: >
+      Open Targets gene-disease association scores for human proteins, one row
+      per (protein, disease). overall_score is a weight-of-evidence measure in
+      [0.1, 1] — NOT a probability. The raw OT score starts at ~0 and is heavily
+      right-skewed (median ~0.02); rows below 0.1 are dropped at the mart layer
+      because that trace tail is unrankable noise (e.g. a single text-mining
+      co-mention), which would otherwise inflate the table to 4.3M rows and let a
+      naive COUNT read EGFR as "~2,600 diseases". The 0.1 floor keeps ~16% of
+      rows yet only 5% of proteins lose all links; the UI shows the top few per
+      protein by score. See the model header and
+      assert_fact_protein_disease_overall_score_range for the enforced contract.
     columns:
       - name: uniprot_accession
         tests:
@@ -113,3 +128,10 @@ models:
               arguments:
                 to: ref('dim_protein')
                 field: uniprot_accession
+      - name: efo_id
+        description: "EFO/MONDO/... disease ID extracted from the diseases STRUCT list. NULL where the source struct's diseaseId is absent — not invented (CLAUDE.md rule 5)."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_disease')
+                field: efo_id

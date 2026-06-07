@@ -3,7 +3,10 @@
 -- Protein dimension: one row per reviewed human protein.
 -- function_raw is the UniProt source text; NULL rows get 'No information available'.
 -- function_friendly and tagline: hand-curated editorial seed wins via COALESCE;
--- LLM output (stg_llm_rewrites) fills the remaining ~20k proteins.
+-- LLM output (stg_llm_rewrites) fills the remaining ~20k proteins; when the LLM
+-- judged function_raw too terse to rewrite (e.g. "Orphan receptor") and returned
+-- null, function_friendly falls back to the raw UniProt text itself -- still more
+-- informative to a reader than a placeholder.
 -- is_curated = TRUE for the 100 proteins in the dim_protein_editorial seed.
 
 WITH uniprot AS (
@@ -34,7 +37,7 @@ SELECT
     u.sequence,
     u.pfam_id,
     COALESCE(u.function_raw, 'No information available')                                    AS function_raw,
-    COALESCE(editorial.function_friendly, llm.function_friendly, 'No information available') AS function_friendly,
+    COALESCE(editorial.function_friendly, llm.function_friendly, u.function_raw, 'No information available') AS function_friendly,
     COALESCE(editorial.tagline, llm.tagline, 'No information available')                      AS tagline,
     editorial.uniprot_accession IS NOT NULL                     AS is_curated,
     u.ensembl_gene_id,

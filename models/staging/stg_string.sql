@@ -7,5 +7,5 @@ SELECT
     uniprot_b,
     combined_score
 FROM read_parquet(
-    's3://{{ var("r2_bucket") }}/string/v{{ var("string_version") }}/string_interactions.parquet'
+    'r2://{{ var("r2_bucket") }}/string/v{{ var("string_version") }}/string_interactions.parquet'
 )

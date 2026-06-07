@@ -13,5 +13,5 @@ SELECT
     ensembl_gene_ids[1]                  AS ensembl_gene_id,
     string_ids[1]                        AS string_protein_id
 FROM read_parquet(
-    's3://{{ var("r2_bucket") }}/uniprot/v{{ var("uniprot_version") }}/uniprot_human_reviewed_raw.parquet'
+    'r2://{{ var("r2_bucket") }}/uniprot/v{{ var("uniprot_version") }}/uniprot_human_reviewed_raw.parquet'
 )

@@ -21,7 +21,9 @@ from atlas.assets.ingest.string import (
 )
 
 
-def test_resolve_string_ids_keeps_only_ensembl_uniprot() -> None:
+def test_resolve_string_ids_drops_irrelevant_sources() -> None:
+    # The aliases file tags rows with many sources (HGNC, gene symbols, BLAST_*, ...);
+    # only Ensembl_UniProt / UniProt_AC / Ensembl_HGNC_uniprot_ids feed resolution.
     alias_rows = [
         ("9606.ENSP1", "P01308", "Ensembl_UniProt"),
         ("9606.ENSP1", "INS", "HGNC"),  # different source -> ignored
@@ -31,10 +33,66 @@ def test_resolve_string_ids_keeps_only_ensembl_uniprot() -> None:
     assert result == {"9606.ENSP1": "P01308", "9606.ENSP2": "P06213"}
 
 
-def test_resolve_string_ids_first_mapping_wins_on_duplicate_ensp() -> None:
+def test_resolve_string_ids_prefers_hgnc_uniprot_id_over_other_candidates() -> None:
+    # Ensembl_HGNC_uniprot_ids lists only the canonical accession per gene —
+    # the strongest disambiguation signal, so it wins even over a UniProt_AC hit.
     alias_rows = [
         ("9606.ENSP1", "P01308", "Ensembl_UniProt"),
-        ("9606.ENSP1", "P99999", "Ensembl_UniProt"),  # duplicate ENSP, later -> ignored
+        ("9606.ENSP1", "P99999", "UniProt_AC"),  # secondary/demerged accession
+        ("9606.ENSP1", "P01308", "Ensembl_HGNC_uniprot_ids"),
+    ]
+    result = resolve_string_ids(alias_rows)
+    assert result["9606.ENSP1"] == "P01308"
+
+
+def test_resolve_string_ids_picks_hgnc_candidate_corroborated_by_intersection() -> None:
+    # Paralogs sharing one Ensembl transcript can produce MULTIPLE
+    # Ensembl_HGNC_uniprot_ids rows for the same ENSP. When that happens, prefer
+    # whichever HGNC candidate is corroborated by the Ensembl_UniProt/UniProt_AC
+    # intersection over the first HGNC row seen.
+    alias_rows = [
+        ("9606.ENSP1", "Q1ZYQ1", "Ensembl_HGNC_uniprot_ids"),  # first seen, uncorroborated
+        ("9606.ENSP1", "P0DPH8", "Ensembl_HGNC_uniprot_ids"),  # corroborated below
+        ("9606.ENSP1", "P0DPH8", "Ensembl_UniProt"),
+        ("9606.ENSP1", "P0DPH8", "UniProt_AC"),
+    ]
+    result = resolve_string_ids(alias_rows)
+    assert result["9606.ENSP1"] == "P0DPH8"
+
+
+def test_resolve_string_ids_uses_singleton_intersection_when_no_hgnc() -> None:
+    # No HGNC tag for this ENSP. Ensembl_UniProt and UniProt_AC each contain a
+    # mix of the canonical accession plus a gene symbol / secondary accession;
+    # only the canonical one appears under BOTH tags.
+    alias_rows = [
+        ("9606.ENSP1", "Q9UNK4", "UniProt_AC"),  # secondary accession, listed first
+        ("9606.ENSP1", "P01308", "Ensembl_UniProt"),
+        ("9606.ENSP1", "P01308", "UniProt_AC"),
+        ("9606.ENSP1", "INS", "Ensembl_UniProt"),  # bare gene symbol
+    ]
+    result = resolve_string_ids(alias_rows)
+    assert result["9606.ENSP1"] == "P01308"
+
+
+def test_resolve_string_ids_falls_back_to_first_uniprot_ac() -> None:
+    # No HGNC tag, and the intersection has more than one candidate (both
+    # accessions are tagged under both sources) -> fall back to the first
+    # UniProt_AC alias, which is narrower than Ensembl_UniProt alone.
+    alias_rows = [
+        ("9606.ENSP1", "A0A087WWM3", "UniProt_AC"),
+        ("9606.ENSP1", "A0A087WWM3", "Ensembl_UniProt"),
+        ("9606.ENSP1", "Q8N4F4", "UniProt_AC"),
+        ("9606.ENSP1", "Q8N4F4", "Ensembl_UniProt"),
+    ]
+    result = resolve_string_ids(alias_rows)
+    assert result["9606.ENSP1"] == "A0A087WWM3"
+
+
+def test_resolve_string_ids_falls_back_to_first_ensembl_uniprot_as_last_resort() -> None:
+    # No HGNC, no UniProt_AC at all -> last resort is the first Ensembl_UniProt alias.
+    alias_rows = [
+        ("9606.ENSP1", "P01308", "Ensembl_UniProt"),
+        ("9606.ENSP1", "INS", "Ensembl_UniProt"),
     ]
     result = resolve_string_ids(alias_rows)
     assert result["9606.ENSP1"] == "P01308"
