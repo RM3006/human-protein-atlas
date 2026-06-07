@@ -255,7 +255,7 @@ Open Targets is a UK-based consortium (EMBL-EBI, Sanger, GSK, Sanofi, Pfizer, Br
 Two slots on the story card:
 
 - **"When broken"** — disease associations (e.g., insulin → type 1 diabetes, type 2 diabetes, insulinoma)
-- **"Drugs that work with it"** — drug-target relationships, fully reconciled with disease evidence (e.g., insulin → Humulin, Lispro, Glargine)
+- **"Drugs that work with it"** — drug-target relationships, fully reconciled with disease evidence. **A drug attaches to the protein it acts *on* (the molecular target), not to a ligand.** So insulin the gene (INS, `P01308`) has *no drugs of its own* — the insulin analogs (Glargine, Degludec, Lispro, …) map to the insulin **receptor** INSR (`P06213`). The story card reaches them by linking ligand → receptor rather than synthesizing a drug list for the ligand (see the **Part 6** design rule in `ROADMAP.md`).
 
 It also gives you a single composite confidence score per gene-disease pair that you can sort by.
 
@@ -439,7 +439,7 @@ To make this concrete, here's what flows in for insulin specifically. This is th
 | Top partner 3 | STRING | same | `SLC2A4 (0.94)` |
 | When broken — Type 1 diabetes | Open Targets | `associationByOverall` filtered to `INS` | `EFO_0001359, score 0.92` |
 | When broken — Type 2 diabetes | Open Targets | same | `EFO_0001360, score 0.88` |
-| Drug — Humulin | Open Targets | `knownDrugsAggregated` filtered to `INS`, `phase=4` | `CHEMBL1201631` |
+| Drugs (none directly on INS) | Open Targets | `clinical_target` keys each drug to its *target gene* — insulin's analogs target the **receptor** INSR, not INS | INS: **0 drugs**; INSR (`P06213`): **16 approved** (Glargine, Degludec, …) — reached via the ligand → receptor link |
 | Drug bioactivity (v2) | ChEMBL | `activity` endpoint, `target=CHEMBL1850`, `pchembl_value ≥ 6` | IC50 / Ki rows |
 
 Every value on the card has a traceable provenance. That's the test of a working manifest.

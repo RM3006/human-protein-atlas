@@ -194,11 +194,14 @@ Before building:
   - UMAP atlas (Plotly WebGL `scattergl`, colored by family)
   - Story-card panel updating on click
   - Nearest-neighbors table
+  - Clickable cross-references on the story card: each interaction partner and each drug target is a link that loads that protein's card.
+
+**Ligand → receptor → drug routing (design rule — do not deviate).** A drug attaches to the protein it acts *on* (the molecular target), never to a ligand. So a hormone/ligand like insulin (INS, `P01308`) correctly has **no drugs of its own** — its analogs (Glargine, Degludec, …) sit on the insulin **receptor** INSR (`P06213`). The UI must **not** synthesize a drug list for a ligand: deriving one from STRING interaction edges drags in biologically-wrong drugs (e.g. IGF1R cancer antibodies, tied at the same interaction score with no way to filter them) and joining via shared diseases yields the whole disease pharmacopeia, not the protein's drugs — both verified against live data; see `MEMORY.md`. Instead, the story card shows the receptor as a top interaction partner and makes it clickable, so the reader reaches the drugs by navigating **ligand → receptor → drugs**. No new data source, no invented links (CLAUDE.md rule 5). Each card still shows only the drugs whose molecular target *is* that protein, top few by clinical phase.
 
 **Tasks**
 1. Write the FastAPI handlers — one SQL query or one Qdrant call each.
 2. `modal deploy`. Test endpoints with `curl`.
-3. Build the Streamlit UI in `apps/ui/`. Use `st.plotly_chart` + `st.session_state` for selection.
+3. Build the Streamlit UI in `apps/ui/`. Use `st.plotly_chart` + `st.session_state` for selection. Render interaction partners and drug targets as clickable cross-references that load the selected accession's card (this is the ligand → receptor → drug navigation path — see the design rule above; never fabricate a ligand's drug list).
 4. Wire UI to API via `httpx`.
 5. Deploy to Streamlit Community Cloud with the API URL as a secret.
 
@@ -206,6 +209,7 @@ Before building:
 - Public Streamlit URL works in incognito.
 - Typing "insulin" highlights INS on the atlas and renders its story card.
 - Clicking a neighbor in the table updates the card without page reload.
+- Insulin (`P01308`) shows **no direct drugs**, but its top interaction partner INSR (`P06213`) is a working link whose card lists the insulin analogs — confirming the ligand → receptor → drug navigation path.
 
 **Risks**
 - 20k points in Plotly without `scattergl` will be slow.

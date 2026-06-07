@@ -586,3 +586,50 @@ unique-pairs grain + not_null ×2 + relationships ×2).
 
 `models/marts/_schema.yml` (description), `docs/protein_atlas_data_source_manifest.md`
 (grain note + DDL comment + the "ot_associations_raw is large" gotcha).
+
+---
+
+## Ligand → receptor → drug routing (UI design rule, 2026-06-07)
+
+### Decision
+
+Drugs stay on the protein they act *on* (the molecular target); a ligand's card
+is **not** given a synthesized drug list. The card surfaces the receptor as a
+clickable interaction partner so the reader navigates **ligand → receptor →
+drugs**. Written into `ROADMAP.md` Part 6 as a "do not deviate" design rule
+(deliverable + task 3 + exit criterion). Chosen by the user over two rejected
+alternatives.
+
+### Why (verified against live data, insulin P01308)
+
+Insulin the gene has **0 drugs** in `fact_drug_target_disease`; its analogs
+(Glargine, Degludec, …) attach to the receptor **INSR (P06213, 16 approved)**.
+Two tempting shortcuts both fail:
+
+- **Link drugs via top interaction partners** (the user's first idea): insulin's
+  top-8 STRING partners are tied at ~999, and they include both INSR (25 drugs,
+  the *right* insulin analogs) **and IGF1R (P08069, 20 drugs — MECASERMIN,
+  TEPROTUMUMAB: thyroid-eye-disease / growth drugs, *wrong* for insulin)**. Same
+  score, same `protein_class` ("Enzymes, FDA approved drug targets") — **no
+  signal to keep INSR and drop IGF1R.** STRING is undirected/untyped (fuses
+  binding with pathway co-membership), so it cannot identify the *cognate*
+  receptor.
+- **Link drugs via top diseases**: insulin's highest-scored diseases (neonatal
+  diabetes, MODY, hyperproinsulinemia) have **0 drugs**; type 1 diabetes has
+  **136 drugs across 197 targets** — the whole disease pharmacopeia, not
+  insulin's drugs.
+
+### Rejected: a real ligand→receptor table
+
+A correct, general "drugs for this ligand" feature would need a curated, *typed*
+ligand→receptor source (IUPHAR/BPS Guide to PHARMACOLOGY, OmniPath, …) =
+new data source (CLAUDE.md rule 6) + scope. Parked as a possible v2 thread; for
+v1 the navigation approach is correct and free, and respects rule 5 (no invented
+data).
+
+### Docs updated (same commit)
+
+`ROADMAP.md` (Part 6 design rule + task + exit criterion),
+`docs/protein_atlas_data_source_manifest.md` (corrected the wrong "insulin →
+Humulin/Lispro/Glargine" worked-example + "Drugs that work with it" framing —
+drugs map to INSR, not INS), `README.md` (features: clickable cross-references).
