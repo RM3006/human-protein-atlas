@@ -482,7 +482,58 @@ worth doing):
 
 ### Next steps
 
-- The remaining open items above (staging flakiness, OT extraction canary) —
-  revisit only if they start actively blocking work, per the "implement the
-  simplest solution, avoid speculative future-proofing" principle.
+- ~~The remaining open items above (staging flakiness, OT extraction canary)~~ —
+  staging flakiness root-caused and fixed same day, see below. OT extraction
+  canary still open; revisit only if it starts actively blocking work.
 - Part 6: Streamlit UI work (unchanged from the Part 5 next-steps note above).
+
+## MotherDuck S3/R2 staging-view 404s — root cause + fix (2026-06-07, complete)
+
+### Root cause
+
+The "flaky `HTTP 404` on existing files" noted above wasn't flaky — it was
+**session-scoped**. `models/profiles.yml` configured R2 access via dbt-duckdb
+`settings:` (`s3_endpoint`, `s3_access_key_id`, …, templated with `env_var()`).
+Those become ephemeral `SET s3_*` statements applied only to dbt's *local*
+DuckDB session — confirmed via `SELECT * FROM duckdb_secrets()` returning empty
+on the live connection. Any other session (MotherDuck web UI, a fresh `duckdb`
+connection, CI) re-executes the staging views' `read_parquet('s3://atlas-raw/…')`
+with no R2 credentials, falls back to MotherDuck's default AWS-S3 resolution
+(`region eu-central-1`), and 404s — `atlas-raw` is a Cloudflare R2 bucket, not
+an AWS S3 bucket. `dbt run`/`dbt test` always passed because they ran inside the
+one session that had the right settings; only ad-hoc UI queries failed.
+
+### Fix
+
+1. **`notebooks/setup_motherduck_r2_secret.py`** (one-shot, run-once-then-keep —
+   it's idempotent via `CREATE OR REPLACE`, unlike `fix_bucket2_rewrites.py`
+   which was truly single-use): registers a **persistent** secret server-side —
+   `CREATE OR REPLACE SECRET atlas_r2 IN MOTHERDUCK (TYPE R2, KEY_ID …, SECRET …,
+   ACCOUNT_ID …, REGION 'auto')`. `storage='motherduck'`, `persistent=True` —
+   available to *any* session, confirmed via fresh bare connections with zero
+   local `SET` statements.
+   - **MotherDuck/DuckDB docs say R2 is regionless and `REGION` can be omitted —
+     that's wrong in practice.** Without it, the cloud engine defaults to
+     `eu-central-1` (its own account region), which R2 rejects outright
+     (`InvalidRegionName … Must be one of: wnam, enam, weur, eeur, apac, oc,
+     auto` → HTTP 400). Pinning `REGION 'auto'` fixed it. Worth remembering if
+     any other R2 secret gets created later.
+2. **All 9 `models/staging/stg_*.sql`**: source paths switched from
+   `s3://{{ var("r2_bucket") }}/…` to `r2://{{ var("r2_bucket") }}/…` so they
+   route through the `atlas_r2` secret (scoped to `r2://` only).
+3. **`models/profiles.yml`**: removed the now-redundant `settings:` block
+   entirely (6 lines) — the persistent secret is the single source of truth for
+   both local dbt runs and MotherDuck UI/cloud sessions. Re-ran `dbt run` (17/17)
+   + `dbt test` (65/65) with zero local `s3_*` settings present — all green.
+
+### Verification
+
+Queried all 9 staging views from **fresh, bare `duckdb.connect()` sessions**
+(no local `SET` statements at all — the exact MotherDuck-UI scenario that was
+failing): all 9 resolved correctly (`stg_hpa` 19,179 rows … `stg_ot_associations`
+4,508,002 rows … `stg_uniprot` 20,431 rows).
+
+### Result
+
+Staging-view 404s eliminated for *all* sessions, not just dbt's. `dbt run`
+17/17, `dbt test` 65/65, `ruff`/`pyright` clean on the new script.

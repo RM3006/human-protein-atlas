@@ -7,5 +7,5 @@ SELECT
     diseaseId                                   AS efo_id,
     CAST(associationScore AS DECIMAL(10, 6))    AS overall_score
 FROM read_parquet(
-    's3://{{ var("r2_bucket") }}/opentargets/v{{ var("ot_version") }}/ot_associations.parquet'
+    'r2://{{ var("r2_bucket") }}/opentargets/v{{ var("ot_version") }}/ot_associations.parquet'
 )

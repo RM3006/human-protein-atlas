@@ -7,6 +7,6 @@ SELECT
     name      AS drug_name,
     drugType  AS modality
 FROM read_parquet(
-    's3://{{ var("r2_bucket") }}/opentargets/v{{ var("ot_version") }}/ot_drug_molecules.parquet'
+    'r2://{{ var("r2_bucket") }}/opentargets/v{{ var("ot_version") }}/ot_drug_molecules.parquet'
 )
 WHERE id IS NOT NULL

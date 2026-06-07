@@ -10,5 +10,5 @@ SELECT
     approvedName                                                            AS gene_name,
     list_filter(proteinIds, x -> x.source = 'uniprot_swissprot')[1].id     AS uniprot_accession
 FROM read_parquet(
-    's3://{{ var("r2_bucket") }}/opentargets/v{{ var("ot_version") }}/ot_targets.parquet'
+    'r2://{{ var("r2_bucket") }}/opentargets/v{{ var("ot_version") }}/ot_targets.parquet'
 )
