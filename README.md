@@ -14,7 +14,7 @@
 
 ## What this is
 
-A multi-source human protein atlas built on a serverless data platform. Every reviewed human protein in UniProt (~20,000 entries) is embedded by Meta's ESM-2 language model, projected to a 2D map, and joined with interactions, tissue data, diseases, and drugs from four other public databases. The result is served through a Streamlit UI backed by a FastAPI service on Modal.
+A multi-source human protein atlas built on a serverless data platform. Every reviewed human protein in UniProt (~20,000 entries) is embedded by Meta's ESM-2 language model, projected to a 2D map, and joined with interactions, tissue data, diseases, and drugs from four other public databases. The result is served through a Streamlit UI that queries the warehouse and vector index directly — no separate API tier.
 
 The same infrastructure that produces the visualization — clusters of kinases, receptors, and transporters in distinct regions of the map — also powers protein-by-protein "story cards" written in plain English: hand-written narratives for the 100 most culturally important proteins, LLM-generated descriptions for the long tail, identical UI for both.
 
@@ -56,8 +56,7 @@ The atlas demonstrates end-to-end data engineering on a substantive domain. A re
 | ML compute | Modal (serverless GPU, A10G) |
 | Protein language model | ESM-2 `t33_650M` (Hugging Face) |
 | Vector database | Qdrant Cloud |
-| API | FastAPI (deployed on Modal) |
-| UI | Streamlit (Community Cloud) |
+| UI | Streamlit (Community Cloud) — queries MotherDuck + Qdrant directly |
 | Infrastructure-as-Code | OpenTofu |
 | LLM batch rewrites | Claude Haiku (Anthropic API) |
 <!-- /MAINTAINED -->
@@ -85,7 +84,6 @@ flowchart LR
         QD[(Qdrant<br/>vector index)]
     end
     subgraph Serve["Serving"]
-        API[FastAPI on Modal]
         UI[Streamlit UI]
     end
 
@@ -98,9 +96,8 @@ flowchart LR
     ESM --> UMAP
     UMAP --> MD
     ESM --> QD
-    MD --> API
-    QD --> API
-    API --> UI
+    MD --> UI
+    QD --> UI
 ```
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for design decisions and tradeoffs.
@@ -146,8 +143,7 @@ See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_sourc
 │       └── tests/                           # fixture-based correctness tests
 ├── models/                                  # dbt project (sources, staging, marts)
 ├── apps/
-│   ├── api/                                 # FastAPI on Modal
-│   └── ui/                                  # Streamlit
+│   └── ui/                                  # Streamlit; queries MotherDuck + Qdrant directly
 ├── notebooks/                               # exploratory
 ├── .github/workflows/ci.yml                 # ruff + pyright + pytest on every PR
 ├── pyproject.toml
@@ -205,7 +201,7 @@ Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential part
 - [x] Part 3 — dbt modeling
 - [x] Part 4 — ESM-2 inference + UMAP + Qdrant
 - [x] Part 5 — LLM rewrites + curation
-- [ ] Part 6 — API + UI vertical slice
+- [ ] Part 6 — Streamlit UI vertical slice
 - [ ] Part 7 — Polish: tour, amino acids, design pass
 - [ ] Part 8 — Documentation + deploy
 <!-- /MAINTAINED -->

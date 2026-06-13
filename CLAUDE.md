@@ -16,7 +16,7 @@ A living atlas of every human protein — what it does, who it talks to, what go
 
 ## Tech stack (fixed — ask before deviating)
 
-Python 3.11+ · `uv` · `ruff` · `pyright` strict · `pytest` · OpenTofu 1.8+ · Dagster OSS · Cloudflare R2 · Parquet · MotherDuck · dbt-core + dbt-duckdb · Modal · ESM-2 `t33_650M` · Qdrant Cloud · FastAPI · Streamlit · `polars` (not pandas) · Claude Haiku for batch rewrites.
+Python 3.11+ · `uv` · `ruff` · `pyright` strict · `pytest` · OpenTofu 1.8+ · Dagster OSS · Cloudflare R2 · Parquet · MotherDuck · dbt-core + dbt-duckdb · Modal · ESM-2 `t33_650M` · Qdrant Cloud · Streamlit · `polars` (not pandas) · Claude Haiku for batch rewrites.
 
 ## Repo layout
 
@@ -26,8 +26,7 @@ docs/        curation list, data-source manifest
 infra/       OpenTofu modules
 pipelines/   Dagster project; package `atlas/` (assets/ingest, assets/transform, assets/ml, resources, tests)
 models/      dbt project (sources, staging, marts)
-apps/api/    FastAPI on Modal
-apps/ui/     Streamlit on Community Cloud
+apps/ui/     Streamlit on Community Cloud; queries MotherDuck + Qdrant directly (no API tier)
 notebooks/   exploratory; never imported elsewhere
 ```
 
@@ -38,7 +37,6 @@ One module per data source under `pipelines/atlas/assets/ingest/` (`uniprot.py`,
 - Type hints on every signature.
 - Docstrings only where logic is non-obvious.
 - `pathlib.Path` over `os.path`.
-- Async FastAPI handlers.
 - Every Dagster asset has a docstring naming (1) what it produces, (2) its dependencies, (3) where the output lands.
 
 ## Two-tier editorial pattern
