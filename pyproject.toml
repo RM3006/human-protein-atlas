@@ -16,6 +16,8 @@ dependencies = [
     "qdrant-client>=1.9",
     "numpy>=1.26",
     "anthropic>=0.50",
+    "streamlit>=1.40",
+    "plotly>=5.24",
 ]
 
 [dependency-groups]
@@ -52,10 +54,14 @@ select = ["E", "F", "I", "UP", "B", "SIM", "TID"]
 "notebooks/**" = ["E501"]
 
 [tool.pyright]
-include = ["pipelines/atlas"]
-# modal_esm2.py runs inside a Modal GPU container; torch/transformers are only
-# installed there, not locally. Excluding avoids hundreds of spurious import errors.
-exclude = ["pipelines/atlas/assets/ml/modal_esm2.py"]
+include = ["pipelines/atlas", "apps/ui"]
+# modal_esm2.py runs inside a Modal GPU container (torch/transformers only there).
+# apps/ui/app.py is Streamlit + Plotly glue with weak third-party stubs; the typed
+# logic lives in apps/ui/data.py and apps/ui/render.py, which stay strict.
+exclude = [
+    "pipelines/atlas/assets/ml/modal_esm2.py",
+    "apps/ui/app.py",
+]
 # `atlas` is the import name; its source lives in pipelines/atlas, so add
 # pipelines/ as a search root for resolution from source (not the editable stub).
 extraPaths = ["pipelines"]
@@ -65,5 +71,5 @@ venvPath = "."
 venv = ".venv"
 
 [tool.pytest.ini_options]
-testpaths = ["pipelines/atlas/tests"]
+testpaths = ["pipelines/atlas/tests", "apps/ui/tests"]
 addopts = "-q"

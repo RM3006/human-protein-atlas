@@ -682,3 +682,76 @@ before; the UI must treat `NULL`/empty the same way (`for x in (data or [])`).
 Rebuilt (`dbt run --select protein_story_card`) and spot-checked live; no
 schema/test file exists for this query (it's a parametrized `models/queries/`
 view, not a mart — `_schema.yml` doesn't cover it).
+
+---
+
+## Part 6 — dropped the API tier; Streamlit talks to MotherDuck + Qdrant directly (2026-06-13)
+
+### Decision
+
+The original Part 6 plan put a FastAPI service on Modal between Streamlit and
+the data stores. That tier was never built. Instead `apps/ui/app.py` calls
+`apps/ui/data.py`, which opens a MotherDuck (DuckDB) connection and a Qdrant
+client directly — no intermediate HTTP service. This is now the confirmed,
+permanent v1 architecture, not a stopgap. `README.md` (intro prose, tech-stack
+table, architecture diagram, project structure), `ROADMAP.md` (Part 6 title,
+deliverables, tasks), `CLAUDE.md` (tech-stack list, repo layout, "Async FastAPI
+handlers" convention), and `SETUP.md` (Modal/Qdrant setup notes) were updated to
+remove FastAPI/Modal-API references.
+
+### Why
+
+The API tier was speculative: nothing other than this Streamlit app would ever
+call it. For a single-tenant analytical dashboard, a separate FastAPI service on
+Modal adds a deployment unit, a network hop, and a second place for the
+story-card query logic to drift from `models/queries/protein_story_card.sql` —
+with no consumer to justify the indirection.
+
+### How to apply
+
+- `apps/ui/data.py` is the canonical data-access layer for the UI: typed
+  functions over a MotherDuck connection (`fetch_story_card`, `search_proteins`,
+  `list_proteins`, `fetch_atlas`, `fetch_sequence_lengths`, ...) and a Qdrant
+  client (`find_neighbors`). New UI data needs go here, not into a new API
+  endpoint.
+- `models/queries/protein_story_card.sql` stays the canonical spec for the
+  story-card shape (per the LIST(STRUCT) entry above); `data.py` mirrors it.
+- If a second consumer (a public API, a mobile client) ever needs this data,
+  that's the trigger to revisit an API tier — not before.
+- FastAPI/pydantic/uvicorn were never added to `pyproject.toml`; `httpx` stays
+  (used by the ingest pipelines in `pipelines/atlas/assets/ingest/`, unrelated
+  to this dropped tier).
+
+---
+
+## Part 6 — deployed to Streamlit Community Cloud (2026-06-13, complete)
+
+### Decision
+
+Deployed from the `feat/part6-ui` branch to Streamlit Community Cloud:
+https://human-protein-atlas-wuvzvj7dohsidbm4lgndwc.streamlit.app/. Added
+`apps/ui/requirements.txt` — a minimal pip list (`streamlit`, `plotly`,
+`duckdb==1.5.2`, `qdrant-client`) — because Streamlit Cloud prefers a
+requirements file next to the main script over the repo-root `pyproject.toml`,
+which lists the whole project's dependencies (dagster, modal, umap-learn,
+dbt-duckdb, ...) that the UI never imports. `pyproject.toml`/`uv.lock` remain
+the source of truth for local dev.
+
+### Why
+
+Free-tier Cloud builds have limited time/memory; installing the full project
+dependency set for a dashboard that only needs four packages risked slow or
+failing builds. `MOTHERDUCK_TOKEN`, `QDRANT_URL`, `QDRANT_API_KEY` are set in
+the Cloud app's Secrets UI (TOML), matching `apps/ui/.streamlit/secrets.toml.example`.
+
+### How to apply
+
+All ROADMAP Part 6 exit criteria verified live: incognito load works; searching
+"insulin" highlights INS and renders its card; insulin shows no direct drugs
+while INSR (its receptor) is a working link listing the insulin analogs;
+clicking a neighbor updates the card without a page reload. Part 6 is complete
+— `README.md` Status section and Part 6 checkbox updated, live-demo link added
+to the hero and links sections.
+
+If `apps/ui/requirements.txt` ever drifts from `pyproject.toml`'s version
+constraints for `streamlit`/`plotly`/`duckdb`/`qdrant-client`, update both.

@@ -1,0 +1,13 @@
+protein_class_token,family_group,priority
+G-protein coupled receptors,Receptors,1
+Nuclear receptors,Receptors,1
+Voltage-gated ion channels,Ion channels,2
+Transcription factors,Transcription factors,3
+Immunoglobulin genes,Immune,4
+T-cell receptor genes,Immune,4
+Ribosomal proteins,Ribosomal / translation,5
+Enzymes,Enzymes,6
+Transporters,Transporters,7
+Predicted secreted proteins,Secreted,8
+Predicted membrane proteins,Membrane,9
+Predicted intracellular proteins,Intracellular,10

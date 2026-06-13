@@ -1,0 +1,15 @@
+# Streamlit config tuned for embedding the app as a widget in an external page.
+# Flat editorial palette: #ffffff canvas, #e6e6e6 lines, #888888 secondary, #111111 ink.
+[theme]
+base = "light"
+primaryColor = "#111111"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#111111"
+
+[client]
+# Hide the developer toolbar (hamburger / "Deploy") for a clean embedded widget.
+toolbarMode = "minimal"
+
+[server]
+headless = true

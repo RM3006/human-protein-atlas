@@ -27,6 +27,27 @@ editorial AS (
 ),
 llm AS (
     SELECT * FROM {{ ref('stg_llm_rewrites') }}
+),
+class_tokens AS (
+    -- HPA protein_class is a comma-separated multi-label string; explode to one
+    -- row per (protein, class token) so each token can be matched to a family group.
+    SELECT
+        h.uniprot_accession,
+        TRIM(UNNEST(string_split(h.protein_class, ','))) AS tok
+    FROM hpa h
+    WHERE h.protein_class IS NOT NULL AND h.protein_class <> ''
+),
+family AS (
+    -- Pick the single highest-priority (lowest number) matching family group per
+    -- protein, so a specific functional family (e.g. Enzymes, Receptors) wins over
+    -- the generic localization buckets (Predicted intracellular/membrane/secreted).
+    -- ARG_MIN returns the family_group of the row with the minimum priority.
+    SELECT
+        ct.uniprot_accession,
+        ARG_MIN(m.family_group, m.priority) AS family_group
+    FROM class_tokens ct
+    JOIN {{ ref('family_group_map') }} m ON ct.tok = m.protein_class_token
+    GROUP BY ct.uniprot_accession
 )
 
 SELECT
@@ -45,8 +66,12 @@ SELECT
     CAST(NULL AS VARCHAR)                                        AS chembl_target_id,
     h.protein_class,
     h.subcellular_location,
+    -- Coarse family bucket for the atlas map color dimension; 'Unclassified' when
+    -- the protein has no HPA class or only annotation-flag tokens (see family_group_map seed).
+    COALESCE(fam.family_group, 'Unclassified')                  AS family_group,
     CURRENT_TIMESTAMP                                            AS updated_at
 FROM uniprot u
 LEFT JOIN hpa h         ON u.uniprot_accession = h.uniprot_accession
 LEFT JOIN editorial     ON u.uniprot_accession = editorial.uniprot_accession
 LEFT JOIN llm           ON u.uniprot_accession = llm.uniprot_accession
+LEFT JOIN family fam    ON u.uniprot_accession = fam.uniprot_accession

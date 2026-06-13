@@ -28,3 +28,32 @@ seeds:
         description: "Always TRUE for seed entries."
         tests:
           - not_null
+
+  - name: family_group_map
+    description: >
+      Priority-ordered mapping from HPA protein_class tokens to coarse family_group
+      buckets used as the atlas map color dimension. A protein's protein_class string
+      is comma-multi-label; dim_protein explodes it and picks the lowest-priority
+      (most specific functional family) match, so e.g. Enzymes wins over the generic
+      Predicted intracellular/membrane/secreted localization tokens. Annotation-flag
+      tokens (Disease related, Cancer-related, drug-target flags, ...) are deliberately
+      unmapped and fall through to localization or 'Unclassified'.
+    config:
+      column_types:
+        protein_class_token: varchar
+        family_group: varchar
+        priority: integer
+    columns:
+      - name: protein_class_token
+        description: "Exact HPA protein_class token (one comma-split value), the join key."
+        tests:
+          - unique
+          - not_null
+      - name: family_group
+        description: "Coarse family bucket shown on the atlas legend."
+        tests:
+          - not_null
+      - name: priority
+        description: "Lower number wins when a protein matches multiple tokens."
+        tests:
+          - not_null

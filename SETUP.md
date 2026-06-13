@@ -99,10 +99,10 @@ Tools installed on the development machine. One-time install.
 
 ## Phase D — Compute
 
-### D1. Modal — serverless GPU + API hosting
-- **Why**: runs ESM-2 on an A10G GPU for the embedding batch (Part 4) and hosts the FastAPI backend (Part 6). No idle cluster costs.
-- **Used in**: Parts 4 and 6.
-- **Cost**: $30/month in free credits. Full embedding run ≈ $5–10; API hosting is essentially free at portfolio traffic.
+### D1. Modal — serverless GPU for ESM-2 inference
+- **Why**: runs ESM-2 on an A10G GPU for the embedding batch (Part 4). No idle cluster costs.
+- **Used in**: Part 4.
+- **Cost**: $30/month in free credits. Full embedding run ≈ $5–10.
 - **Steps**:
   1. Registration at modal.com.
   2. A payment method must be added (required, but free credits cover the project).
@@ -111,7 +111,7 @@ Tools installed on the development machine. One-time install.
 - **Secrets**: `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET` (written by `modal token new` to `~/.modal/`).
 
 ### D2. Qdrant Cloud — vector database
-- **Why**: similarity search over the 20k × 1280-dim ESM-2 embeddings. The API calls Qdrant for "find proteins like this one" functionality.
+- **Why**: similarity search over the 20k × 1280-dim ESM-2 embeddings. Streamlit queries Qdrant directly for "find proteins like this one" functionality.
 - **Used in**: Parts 4 (load vectors) and 6 (query vectors).
 - **Cost**: free for 1 cluster, 1 GB storage. The project fits comfortably.
 - **Steps**:
@@ -145,8 +145,10 @@ Tools installed on the development machine. One-time install.
 - **Cost**: free for public apps.
 - **Steps**:
   1. Sign-in at share.streamlit.io via GitHub OAuth — no separate signup.
-  2. At Part 6, configure it to point at the repo's `apps/ui/streamlit_app.py`.
-- **Secrets**: configured in the Streamlit Cloud UI, not in `.env.local`. The API URL and any UI tokens are added there.
+  2. At Part 6, configure it to point at the repo's `apps/ui/app.py`. Dependencies are
+     installed from `apps/ui/requirements.txt` (a minimal subset of `pyproject.toml`,
+     scoped to what the UI imports), not the repo-root `pyproject.toml`.
+- **Secrets**: configured in the Streamlit Cloud UI, not in `.env.local`. `MOTHERDUCK_TOKEN`, `QDRANT_URL`, `QDRANT_API_KEY`, and any UI tokens are added there.
 
 ---
 

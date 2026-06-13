@@ -218,7 +218,7 @@ For v1, **just `proteinatlas.tsv` is enough** — it has the summary fields we n
 |---|---|---|
 | `Gene` | `INS` | HGNC gene symbol |
 | `Uniprot` | `P01308` | **Direct join key** |
-| `Protein class` | `Predicted secreted proteins, Plasma proteins` | Tag chips |
+| `Protein class` | `Predicted secreted proteins, Plasma proteins` | Tag chips; source for the derived `dim_protein.family_group` atlas color |
 | `RNA tissue specificity` | `Tissue enhanced` | "Made in" slot (replaces removed `Tissue expression`) |
 | `RNA tissue distribution` | `Detected in single` | Breadth of expression |
 | `Subcellular location` | `Vesicles, Golgi apparatus` | Detail field |
@@ -241,6 +241,7 @@ Direct: the `Uniprot` column gives you the accession. One `LEFT JOIN dim_protein
 - **The `Uniprot` column is sometimes empty** for less-characterized proteins. Use a `LEFT JOIN` and tolerate nulls.
 - **Some genes have multiple HPA rows** (rare but happens). Deduplicate on `Uniprot`, keeping the first.
 - **`Tissue expression` column removed in v24.** The ingest uses `RNA tissue specificity` in its place. The Bronze schema has no `tissue_expression` column — dbt staging maps `rna_tissue_specificity` to the "Made in" story-card slot.
+- **`Protein class` is a union of memberships, not a taxonomy.** A single protein carries many comma-separated classes spanning function (`Enzymes`, `Transcription factors`), localization (`Predicted intracellular/membrane/secreted proteins`), pathway (`RAS pathway related proteins`), detection (`Plasma proteins`), markers (`CD markers`), and disease flags (`Cancer-related genes`) — e.g. TP53 is tagged both `Transcription factors` and `Transporters`, and insulin carries `RAS pathway related proteins`. The derived `dim_protein.family_group` (atlas map color) therefore maps **only trustworthy taxonomic tokens** via the `family_group_map` seed and **deliberately drops** the loose pathway/detection/marker/disease tokens, taking the lowest-`priority` match per protein (specific families beat the broad `Enzymes`/`Transporters`, which beat the localization fallbacks); proteins with no mapped token fall to `'Unclassified'`.
 
 ---
 
@@ -476,6 +477,7 @@ CREATE TABLE dim_protein (
     function_friendly   TEXT,                   -- LLM-rewritten or hand-written
     tagline             VARCHAR,                -- short subtitle on card
     is_curated          BOOLEAN,                -- TRUE for the 100
+    family_group        VARCHAR,                -- coarse family bucket for atlas color; derived from HPA Protein class via family_group_map seed; 'Unclassified' fallback
     ensembl_gene_id     VARCHAR,                -- for joining Open Targets
     string_protein_id   VARCHAR,                -- for joining STRING
     chembl_target_id    VARCHAR,                -- for joining ChEMBL

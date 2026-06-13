@@ -27,6 +27,7 @@ SELECT
     p.is_curated,
     p.protein_class,
     p.subcellular_location,
+    p.family_group,
     fpt.tissue            AS tissue_specificity,
     fpt.expression_level  AS tissue_distribution,
 
@@ -51,7 +52,7 @@ SELECT
             WHERE i.uniprot_a = p.uniprot_accession
                OR i.uniprot_b = p.uniprot_accession
             ORDER BY i.combined_score DESC
-            LIMIT 5
+            LIMIT 20
         ) partner
         JOIN {{ ref('dim_protein') }} dp ON dp.uniprot_accession = partner.partner_accession
     ) AS top_interaction_partners,
