@@ -755,3 +755,30 @@ to the hero and links sections.
 
 If `apps/ui/requirements.txt` ever drifts from `pyproject.toml`'s version
 constraints for `streamlit`/`plotly`/`duckdb`/`qdrant-client`, update both.
+
+---
+
+## Part 6 — Streamlit Cloud app recreated against `main`; new live URL (2026-06-13)
+
+### Decision
+
+Streamlit Community Cloud has no UI to repoint an existing app's source branch
+(Settings only exposes "App URL" and "Python version"). The original app
+(tracking `feat/part6-ui`, URL ending `wuvzvj7dohsidbm4lgndwc`) was deleted and
+recreated pointed at `main`. New live URL:
+https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/. `README.md`
+hero and links sections updated to the new URL; the old URL is dead.
+
+### Why
+
+`feat/part6-ui` was merged to `main` (PR #9, `a3e1f05`) and the user wants the
+deployed app to track `main` going forward so future merges deploy automatically
+without per-PR Cloud reconfiguration.
+
+### How to apply
+
+If the live demo link 404s in the future, check whether the app was recreated
+again (new random URL) before assuming a code issue — `README.md` is the
+source of truth for the current URL. Secrets (`MOTHERDUCK_TOKEN`, `QDRANT_URL`,
+`QDRANT_API_KEY`) had to be re-entered in the new app's Secrets UI since they
+don't carry over on recreation.

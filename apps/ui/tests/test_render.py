@@ -67,6 +67,7 @@ def test_drugs_empty_message_uses_gene_or_fallback() -> None:
 
 def test_chips_splits_and_trims() -> None:
     assert render.chips("Enzymes, Plasma proteins") == ["Enzymes", "Plasma proteins"]
+    assert render.chips("Vesicles,Plasma membrane") == ["Vesicles", "Plasma membrane"]
     assert render.chips(None) == []
     assert render.chips("") == []
 
