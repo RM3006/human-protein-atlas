@@ -145,7 +145,9 @@ Tools installed on the development machine. One-time install.
 - **Cost**: free for public apps.
 - **Steps**:
   1. Sign-in at share.streamlit.io via GitHub OAuth — no separate signup.
-  2. At Part 6, configure it to point at the repo's `apps/ui/streamlit_app.py`.
+  2. At Part 6, configure it to point at the repo's `apps/ui/app.py`. Dependencies are
+     installed from `apps/ui/requirements.txt` (a minimal subset of `pyproject.toml`,
+     scoped to what the UI imports), not the repo-root `pyproject.toml`.
 - **Secrets**: configured in the Streamlit Cloud UI, not in `.env.local`. `MOTHERDUCK_TOKEN`, `QDRANT_URL`, `QDRANT_API_KEY`, and any UI tokens are added there.
 
 ---
