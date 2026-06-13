@@ -1,6 +1,9 @@
 # Secrets
 .env.local
 .env.*.local
+# Streamlit secrets (the .example template IS committed)
+.streamlit/secrets.toml
+**/.streamlit/secrets.toml
 
 # Python
 __pycache__/
