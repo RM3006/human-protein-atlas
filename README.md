@@ -189,11 +189,15 @@ uv run dagster dev -m atlas.definitions
 ## Status
 
 <!-- MAINTAINED: status -->
-**Current status**: Part 5 complete — every protein has a plain-English description.
-20,431 proteins in `dim_protein`: 100 with hand-authored narratives from the
-curation list, 17,073 with Claude Haiku LLM-generated `function_friendly` and
-`tagline`, and 3,258 with no UniProt annotation showing "No information available".
-Spot-check: 20/20 sampled LLM rewrites rated 4–5/5, no invented claims detected.
+**Current status**: Part 6 complete — an interactive Streamlit dashboard is
+[live](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/). Search
+any protein to see its story card, STRING interactome, ESM-2/UMAP sequence
+neighborhood, and clinical profile; cross-references are clickable, following the
+ligand → receptor → drug navigation path (insulin → INSR, where the insulin
+therapies live). The UI queries MotherDuck and Qdrant directly — no API tier.
+The underlying data layer (Part 5) holds 20,431 proteins in `dim_protein`: 100
+with hand-authored narratives, 17,073 with Claude Haiku rewrites, and 3,258
+showing "No information available" where UniProt has no annotation.
 
 Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential parts:
 
