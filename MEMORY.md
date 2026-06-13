@@ -721,3 +721,37 @@ with no consumer to justify the indirection.
 - FastAPI/pydantic/uvicorn were never added to `pyproject.toml`; `httpx` stays
   (used by the ingest pipelines in `pipelines/atlas/assets/ingest/`, unrelated
   to this dropped tier).
+
+---
+
+## Part 6 — deployed to Streamlit Community Cloud (2026-06-13, complete)
+
+### Decision
+
+Deployed from the `feat/part6-ui` branch to Streamlit Community Cloud:
+https://human-protein-atlas-wuvzvj7dohsidbm4lgndwc.streamlit.app/. Added
+`apps/ui/requirements.txt` — a minimal pip list (`streamlit`, `plotly`,
+`duckdb==1.5.2`, `qdrant-client`) — because Streamlit Cloud prefers a
+requirements file next to the main script over the repo-root `pyproject.toml`,
+which lists the whole project's dependencies (dagster, modal, umap-learn,
+dbt-duckdb, ...) that the UI never imports. `pyproject.toml`/`uv.lock` remain
+the source of truth for local dev.
+
+### Why
+
+Free-tier Cloud builds have limited time/memory; installing the full project
+dependency set for a dashboard that only needs four packages risked slow or
+failing builds. `MOTHERDUCK_TOKEN`, `QDRANT_URL`, `QDRANT_API_KEY` are set in
+the Cloud app's Secrets UI (TOML), matching `apps/ui/.streamlit/secrets.toml.example`.
+
+### How to apply
+
+All ROADMAP Part 6 exit criteria verified live: incognito load works; searching
+"insulin" highlights INS and renders its card; insulin shows no direct drugs
+while INSR (its receptor) is a working link listing the insulin analogs;
+clicking a neighbor updates the card without a page reload. Part 6 is complete
+— `README.md` Status section and Part 6 checkbox updated, live-demo link added
+to the hero and links sections.
+
+If `apps/ui/requirements.txt` ever drifts from `pyproject.toml`'s version
+constraints for `streamlit`/`plotly`/`duckdb`/`qdrant-client`, update both.

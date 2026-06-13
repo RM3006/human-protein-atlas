@@ -3,11 +3,12 @@
 > A living atlas of every human protein — what it does, who it talks to, what goes wrong when it breaks — navigated by an AI that learned biology from sequence alone.
 
 <!-- MAINTAINED: links -->
-[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · **Status**: Part 5 complete — every protein has a plain-English description
+[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [Live demo](https://human-protein-atlas-wuvzvj7dohsidbm4lgndwc.streamlit.app/) · **Status**: Part 6 complete — interactive Streamlit dashboard live
 <!-- /MAINTAINED -->
 
 <!-- MAINTAINED: hero -->
-> Hero screenshot pending — added in Part 6 when the UI lands.
+> **[Open the live dashboard →](https://human-protein-atlas-wuvzvj7dohsidbm4lgndwc.streamlit.app/)**
+> Search any human protein to see its atlas position, interactome, and clinical profile.
 <!-- /MAINTAINED -->
 
 ---
@@ -201,7 +202,7 @@ Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential part
 - [x] Part 3 — dbt modeling
 - [x] Part 4 — ESM-2 inference + UMAP + Qdrant
 - [x] Part 5 — LLM rewrites + curation
-- [ ] Part 6 — Streamlit UI vertical slice
+- [x] Part 6 — Streamlit UI vertical slice
 - [ ] Part 7 — Polish: tour, amino acids, design pass
 - [ ] Part 8 — Documentation + deploy
 <!-- /MAINTAINED -->
