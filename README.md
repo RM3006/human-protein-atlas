@@ -3,11 +3,11 @@
 > A living atlas of every human protein — what it does, who it talks to, what goes wrong when it breaks — navigated by an AI that learned biology from sequence alone.
 
 <!-- MAINTAINED: links -->
-[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [Live demo](https://human-protein-atlas-wuvzvj7dohsidbm4lgndwc.streamlit.app/) · **Status**: Part 6 complete — interactive Streamlit dashboard live
+[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [Live demo](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/) · **Status**: Part 6 complete — interactive Streamlit dashboard live
 <!-- /MAINTAINED -->
 
 <!-- MAINTAINED: hero -->
-> **[Open the live dashboard →](https://human-protein-atlas-wuvzvj7dohsidbm4lgndwc.streamlit.app/)**
+> **[Open the live dashboard →](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/)**
 > Search any human protein to see its atlas position, interactome, and clinical profile.
 <!-- /MAINTAINED -->
 

@@ -620,7 +620,9 @@ def render_function_panel(card: dict[str, Any]) -> None:
     if card.get("tissue_specificity"):
         where_rows.append(_kv_row("Made mainly in", card["tissue_specificity"]))
     if card.get("subcellular_location"):
-        where_rows.append(_kv_row("Inside the cell", card["subcellular_location"]))
+        where_rows.append(
+            _kv_row("Inside the cell", ", ".join(render.chips(card["subcellular_location"])))
+        )
     if card.get("tissue_distribution"):
         where_rows.append(_kv_row("Spread", card["tissue_distribution"]))
     body = "".join(where_rows) or "<i style='color:#888888;'>Tissue data not available.</i>"
