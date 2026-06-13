@@ -102,8 +102,16 @@ def test_ring_positions_spaces_nodes_evenly_on_a_circle() -> None:
 def test_every_family_group_has_a_color() -> None:
     # The dbt family_group buckets must all be colorable, else points fall to default.
     expected = {
-        "Receptors", "Ion channels", "Transporters", "Transcription factors", "Immune",
-        "Ribosomal / translation", "Enzymes", "Secreted", "Membrane", "Intracellular",
+        "Receptors",
+        "Ion channels",
+        "Transporters",
+        "Transcription factors",
+        "Immune",
+        "Ribosomal / translation",
+        "Enzymes",
+        "Secreted",
+        "Membrane",
+        "Intracellular",
         "Unclassified",
     }
     assert expected <= set(render.FAMILY_COLORS)

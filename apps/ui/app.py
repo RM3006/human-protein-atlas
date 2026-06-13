@@ -553,7 +553,9 @@ def build_network_graph(
         margin={"l": 10, "r": 10, "t": 10, "b": 10},
         showlegend=True,
         legend={
-            "orientation": "h", "yanchor": "bottom", "y": 1.02,
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
             "font": {"size": 11, "color": "#888888"},
         },
         xaxis={"visible": False, "scaleanchor": "y", "scaleratio": 1},
@@ -729,20 +731,33 @@ def build_atlas_figure(
             go.Scattergl(
                 x=[atlas["umap_x"][i] for i in idx],
                 y=[atlas["umap_y"][i] for i in idx],
-                mode="markers", name="similar",
-                marker={"size": marker_size + 7, "color": "rgba(0,0,0,0)",
-                        "line": {"width": 2, "color": "#000000"}},
-                hoverinfo="skip", showlegend=False,
+                mode="markers",
+                name="similar",
+                marker={
+                    "size": marker_size + 7,
+                    "color": "rgba(0,0,0,0)",
+                    "line": {"width": 2, "color": "#000000"},
+                },
+                hoverinfo="skip",
+                showlegend=False,
             )
         )
 
     if selected_xy is not None:
         fig.add_trace(
             go.Scattergl(
-                x=[selected_xy[0]], y=[selected_xy[1]], mode="markers", name="selected",
-                marker={"size": marker_size + 12, "color": "#111111", "symbol": "star",
-                        "line": {"width": 1, "color": "#ffffff"}},
-                hoverinfo="skip", showlegend=False,
+                x=[selected_xy[0]],
+                y=[selected_xy[1]],
+                mode="markers",
+                name="selected",
+                marker={
+                    "size": marker_size + 12,
+                    "color": "#111111",
+                    "symbol": "star",
+                    "line": {"width": 1, "color": "#ffffff"},
+                },
+                hoverinfo="skip",
+                showlegend=False,
             )
         )
 
@@ -752,8 +767,10 @@ def build_atlas_figure(
         showlegend=show_legend,
         legend={
             "orientation": "v",
-            "yanchor": "top", "y": 1,
-            "xanchor": "left", "x": 1.02,
+            "yanchor": "top",
+            "y": 1,
+            "xanchor": "left",
+            "x": 1.02,
             "font": {"size": 10},
         },
         xaxis={"visible": False, "range": x_range},
@@ -777,10 +794,14 @@ def focused_minimap(atlas: dict[str, list[Any]], selected: str) -> go.Figure | N
     half_w = (max(atlas["umap_x"]) - min(atlas["umap_x"])) * 0.03
     half_h = (max(atlas["umap_y"]) - min(atlas["umap_y"])) * 0.03
     return build_atlas_figure(
-        atlas, selected, set(),
+        atlas,
+        selected,
+        set(),
         x_range=[sx - half_w, sx + half_w],
         y_range=[sy - half_h, sy + half_h],
-        height=300, marker_size=8, show_legend=True,
+        height=300,
+        marker_size=8,
+        show_legend=True,
     )
 
 
@@ -866,7 +887,7 @@ def render_drugs(card: dict[str, Any]) -> None:
         "Medicines that act directly on this protein.</div>",
         unsafe_allow_html=True,
     )
-    drugs = sorted(card["approved_drugs"], key=lambda d: (d["max_phase"] or 0), reverse=True)
+    drugs = sorted(card["approved_drugs"], key=lambda d: d["max_phase"] or 0, reverse=True)
     if not drugs:
         st.markdown(
             "<div class='card' style='color:#888888;font-size:0.95rem;'>"

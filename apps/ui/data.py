@@ -193,9 +193,7 @@ def search_proteins(conn: duckdb.DuckDBPyConnection, query: str) -> list[dict[st
         rows = conn.execute(
             SEARCH_SQL, [contains, contains, contains, prefix, prefix, prefix]
         ).fetchall()
-    return [
-        {"uniprot_accession": r[0], "gene_symbol": r[1], "protein_name": r[2]} for r in rows
-    ]
+    return [{"uniprot_accession": r[0], "gene_symbol": r[1], "protein_name": r[2]} for r in rows]
 
 
 def list_proteins(conn: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
@@ -203,9 +201,7 @@ def list_proteins(conn: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
     rows = conn.execute(
         "SELECT uniprot_accession, gene_symbol, protein_name FROM dim_protein"
     ).fetchall()
-    return [
-        {"uniprot_accession": r[0], "gene_symbol": r[1], "protein_name": r[2]} for r in rows
-    ]
+    return [{"uniprot_accession": r[0], "gene_symbol": r[1], "protein_name": r[2]} for r in rows]
 
 
 def fetch_atlas(conn: duckdb.DuckDBPyConnection) -> dict[str, list[Any]]:
