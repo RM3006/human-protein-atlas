@@ -59,11 +59,11 @@ Tools installed on the development machine. One-time install.
 
 ### B1. GitHub
 - **Why**: code repository; CI runs on push.
-- **Used in**: every Part. The public link goes on the portfolio in Part 8.
+- **Used in**: every Part. The public link goes on the portfolio in Part 9.
 - **Cost**: free.
 - **Steps**:
   1. Sign-in or registration at github.com.
-  2. Create a new repository (e.g. `protein-atlas`), **private** initially; flip to public in Part 8.
+  2. Create a new repository (e.g. `protein-atlas`), **private** initially; flip to public in Part 9.
   3. Do **not** initialize with a README, .gitignore, or license — the local repo will push as the source of truth.
 - **Note**: no secret required in `.env.local`. Git uses local credentials.
 

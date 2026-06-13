@@ -128,7 +128,7 @@ See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_sourc
 ├── CLAUDE.md                                # rules for Claude Code sessions
 ├── README.md                                # this file
 ├── ARCHITECTURE.md                          # technical design + decisions
-├── ROADMAP.md                               # 8-part build plan
+├── ROADMAP.md                               # 9-part build plan
 ├── SETUP.md                                 # prerequisites and account setup
 ├── docs/
 │   ├── protein_atlas_curation_list.md       # 100 hand-curated proteins
@@ -180,8 +180,8 @@ uv run dagster dev -m atlas.definitions
 | File | Purpose |
 |---|---|
 | [CLAUDE.md](./CLAUDE.md) | rules of engagement for Claude Code sessions |
-| [ROADMAP.md](./ROADMAP.md) | 8-part build plan with effort estimates |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | technical design and decisions (written in Part 8) |
+| [ROADMAP.md](./ROADMAP.md) | 9-part build plan with effort estimates |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | technical design and decisions (written in Part 9) |
 | [SETUP.md](./SETUP.md) | prerequisites and account configuration |
 | [docs/protein_atlas_curation_list.md](./docs/protein_atlas_curation_list.md) | the 100 hand-curated proteins |
 | [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_source_manifest.md) | data sources, fields, joins, schema |
@@ -199,7 +199,7 @@ The underlying data layer (Part 5) holds 20,431 proteins in `dim_protein`: 100
 with hand-authored narratives, 17,073 with Claude Haiku rewrites, and 3,258
 showing "No information available" where UniProt has no annotation.
 
-Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential parts:
+Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 9 sequential parts:
 
 - [x] Part 1 — Foundation + UniProt ingest
 - [x] Part 2 — Remaining data sources
@@ -207,8 +207,9 @@ Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 8 sequential part
 - [x] Part 4 — ESM-2 inference + UMAP + Qdrant
 - [x] Part 5 — LLM rewrites + curation
 - [x] Part 6 — Streamlit UI vertical slice
-- [ ] Part 7 — Polish: tour, amino acids, design pass
-- [ ] Part 8 — Documentation + deploy
+- [ ] Part 7 — Polish: tour and design pass
+- [ ] Part 8 — Amino acid composition atlas
+- [ ] Part 9 — Documentation + deploy
 <!-- /MAINTAINED -->
 
 ## License

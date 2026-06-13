@@ -2,7 +2,7 @@
 
 ## How to read this document
 
-Eight parts, sequential. Each part depends on the previous — do not parallelize.
+Nine parts, sequential. Each part depends on the previous — do not parallelize.
 
 Each part has:
 
@@ -26,7 +26,7 @@ Before building:
 1. Move `protein_atlas_curation_list.md` and `protein_atlas_data_source_manifest.md` into a new `docs/` subfolder.
 2. Create accounts and grab tokens: Cloudflare R2, MotherDuck, Modal, Qdrant Cloud, Anthropic (for the LLM rewrites in Part 5).
 3. Install `uv`, `git`, OpenTofu locally.
-4. Create the GitHub repo (private at first; flip to public in Part 8).
+4. Create the GitHub repo (private at first; flip to public in Part 9).
 5. Read `CLAUDE.md` end to end. The rules there are non-negotiable.
 
 ---
@@ -214,13 +214,12 @@ Before building:
 
 ---
 
-## Part 7 — Polish: tour, amino acids, design pass
+## Part 7 — Polish: tour and design pass
 
 **Goal**: the project looks designed, not assembled.
 
 **Deliverables**
 - A guided 90-second tour: 4 narrated steps highlighting anchor proteins (Rhodopsin → EGFR → TP53 → an empty zone). Stateful sequence in `st.session_state`.
-- "Amino acid alphabet" side tab with 20 cards (one-sentence description + deficiency note where applicable).
 - "Reading this chart" blue insight card at the top of the atlas tab.
 - Empty / loading / error states on every surface.
 - Source attribution footer.
@@ -228,10 +227,9 @@ Before building:
 
 **Tasks**
 1. Write tour content; implement as stateful sequence.
-2. Author the 20 amino-acid cards in one focused writing session.
-3. Add the insight card; polish all panel headers.
-4. Implement empty / loading / error states.
-5. Generate the `og:image` from the running atlas.
+2. Add the insight card; polish all panel headers.
+3. Implement empty / loading / error states.
+4. Generate the `og:image` from the running atlas.
 
 **Exit criteria**
 - A non-technical friend can use the app for 5 minutes without confusion.
@@ -243,7 +241,37 @@ Before building:
 
 ---
 
-## Part 8 — Documentation, deploy, portfolio integration
+## Part 8 — Amino acid composition atlas
+
+**Goal**: every protein's amino-acid composition is computed and cross-linked, in both directions, to a 20-entry amino-acid glossary.
+
+**Deliverables**
+- `models/seeds/seed_amino_acids.csv` — 20 rows: 1-letter code, name, three-letter code, category, one-sentence description, deficiency note (`NULL` for non-essential amino acids — no invented deficiency stories per rule 5).
+- `models/marts/fct_protein_aa_composition.sql` — one row per `(uniprot_accession, amino_acid_code)` with `count` and `pct_of_sequence`, derived from `dim_protein.sequence`.
+- Story-card composition section: each protein's amino-acid breakdown, with each entry linking to its glossary card.
+- Amino-acid glossary tab: 20 cards, each showing the proteins richest in that amino acid (computed from the mart) — the reverse link.
+- dbt fixture test for the composition mart.
+
+**Tasks**
+1. Author the 20-row seed (name, category, description, deficiency note — `NULL` where there's no real deficiency story).
+2. Build `fct_protein_aa_composition`: per-letter `length(sequence) - length(replace(sequence, letter, ''))` counts, `UNPIVOT`ed to long format. Joins to the seed on `amino_acid_code` — a lookup join, distinct from the `uniprot_accession` cross-database join key (rule 1 still governs protein-to-protein joins, not this).
+3. Add a dbt test: hand-count a short fixture sequence, assert the mart's counts and percentages match.
+4. Expose composition + seed via `apps/ui/data.py`; add the composition section to the story card.
+5. Build the glossary tab with "richest proteins" cross-links back to story cards.
+6. Update `docs/protein_atlas_data_source_manifest.md` and `ARCHITECTURE.md` for the new seed + mart (schema change trigger).
+
+**Exit criteria**
+- `fct_protein_aa_composition` has exactly 20 rows per protein, percentages summing to ~100% (within rounding).
+- EGFR's story card shows its composition breakdown; clicking "Cysteine" opens the glossary card, which lists EGFR among the proteins richest in cysteine.
+- `dbt test` passes, including the new fixture test.
+
+**Risks**
+- `UNPIVOT` over ~20,000 proteins × 20 columns should be cheap, but verify against MotherDuck's free-tier memory limits (same risk as Part 3).
+- Keep glossary content general biochemistry — don't let descriptions drift into invented per-protein claims (rule 5).
+
+---
+
+## Part 9 — Documentation, deploy, portfolio integration
 
 **Goal**: ship publicly with documentation a senior reviewer respects.
 
@@ -301,7 +329,8 @@ After each part, verify the corresponding condition before starting the next par
 | 5 | Spot-check rated ≥17/20. |
 | 6 | Vertical slice works end-to-end on a fresh incognito browser. |
 | 7 | A non-technical person used it without confusion. |
-| 8 | README impresses on first read (test with 2 friends). |
+| 8 | EGFR's composition breakdown is correct and cross-links to/from the amino-acid glossary. |
+| 9 | README impresses on first read (test with 2 friends). |
 
 If a checkpoint fails, **do not skip ahead**. Fix it first.
 

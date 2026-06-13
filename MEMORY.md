@@ -1,7 +1,7 @@
 # MEMORY.md — Architectural decision log
 
 State tracking for the Protein Atlas build. Newest entries at the bottom of each
-part. See `ROADMAP.md` for the plan and `ARCHITECTURE.md` (Part 8) for the full
+part. See `ROADMAP.md` for the plan and `ARCHITECTURE.md` (Part 9) for the full
 writeup.
 
 ## Part 1 — Foundation + UniProt ingest (complete)
@@ -436,8 +436,9 @@ Targets "How it joins" (paralog dedup via `MAX(overall_score)`, plus the
 `disease_ids` STRUCT→`.diseaseId` extraction), and grain comments on the
 `fact_interaction`/`fact_protein_disease`/`fact_drug_target_disease` table defs
 in the reference warehouse-schema block. **`ARCHITECTURE.md` does not exist yet**
-— it's a Part 8 deliverable per `ROADMAP.md:251`/`README.md:186` ("written in
-Part 8"), so nothing to update there.
+— it's a Part 9 deliverable per `ROADMAP.md`/`README.md` ("written in
+Part 9"), so nothing to update there. (Originally "Part 8" — renumbered when
+Part 8 became a dedicated amino-acid composition part; see `ROADMAP.md`.)
 
 ### P2 guardrail follow-up (same day, complete)
 
@@ -782,3 +783,40 @@ again (new random URL) before assuming a code issue — `README.md` is the
 source of truth for the current URL. Secrets (`MOTHERDUCK_TOKEN`, `QDRANT_URL`,
 `QDRANT_API_KEY`) had to be re-entered in the new app's Secrets UI since they
 don't carry over on recreation.
+
+---
+
+## Part 7/8/9 renumbering: amino-acid composition gets its own part (2026-06-13)
+
+### Decision
+
+The "Amino acid alphabet" side tab (20 static cards) was removed from Part 7's
+scope and promoted to its own **Part 8 — Amino acid composition atlas**: a new
+`seed_amino_acids` seed (20 rows) + `fct_protein_aa_composition` mart (derived
+from `dim_protein.sequence`, one row per `(uniprot_accession, amino_acid_code)`)
++ bidirectional UI cross-links (story card → composition → glossary card →
+"richest proteins" → story card). The former Part 8 (Documentation, deploy,
+portfolio integration) is now **Part 9**. `ROADMAP.md`, `README.md` (status
+checklist, doc table, repo tree), `SETUP.md` (Part 8 → Part 9 references) all
+updated.
+
+### Why
+
+User asked what the amino-acid tab had to do with the atlas's actual data —
+correctly noting `dim_protein.sequence` (the per-protein amino-acid string,
+already in the warehouse as ESM-2 input but not yet selected by
+`protein_story_card.sql` / `STORY_CARD_SQL`) was the only real candidate link.
+20 static glossary cards with no per-protein link would "just sit there" — not
+worth building. The fix (per-protein composition % via
+`length(sequence) - length(replace(sequence, letter, ''))`, `UNPIVOT`ed, joined
+to the glossary seed on `amino_acid_code`) is a real feature — new seed + new
+mart + schema-change doc updates + dbt test — comparable in size to a full
+ROADMAP part, not a "polish" task. Hence its own Part 8.
+
+### How to apply
+
+When Part 8 starts: `amino_acid_code` is a lookup-join key into the new seed,
+separate from `uniprot_accession` — rule 1 is unaffected (it governs
+cross-database protein joins, not glossary lookups). Don't invent
+`deficiency_note` content for the 11 non-essential amino acids — `NULL` per
+rule 5.
