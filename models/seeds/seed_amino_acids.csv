@@ -1,0 +1,21 @@
+amino_acid_code,name,three_letter_code,category,produced_by_body,description,deficiency_note
+A,Alanine,Ala,Nonpolar aliphatic,true,"Small simple side chain; one of the most common amino acids and a flexible building block in protein cores.",
+R,Arginine,Arg,Positively charged,true,"Carries a positive charge; common in active sites and a precursor to the signaling molecule nitric oxide.",
+N,Asparagine,Asn,Polar uncharged,true,"Amide side chain; a frequent attachment point for sugars (N-linked glycosylation) on secreted proteins.",
+D,Aspartate,Asp,Negatively charged,true,"Carries a negative charge; common in enzyme active sites and metal-binding pockets.",
+C,Cysteine,Cys,Polar uncharged,true,"Sulfur-containing; pairs with other cysteines to form disulfide bonds that staple a protein's shape together.",
+E,Glutamate,Glu,Negatively charged,true,"Carries a negative charge; abundant on protein surfaces and the brain's main excitatory neurotransmitter.",
+Q,Glutamine,Gln,Polar uncharged,true,"Amide side chain; the most abundant free amino acid in blood and a key carrier of nitrogen.",
+G,Glycine,Gly,Nonpolar aliphatic,true,"The smallest amino acid, just a hydrogen side chain, giving the protein backbone extra flexibility.",
+H,Histidine,His,Positively charged,false,"Imidazole side chain that switches charge near neutral pH, making it ideal for enzyme catalysis.","Essential in the diet; deficiency is uncommon but can contribute to anemia and skin problems."
+I,Isoleucine,Ile,Nonpolar aliphatic,false,"A branched-chain amino acid that packs into the water-avoiding cores of proteins.","Essential branched-chain amino acid; prolonged deficiency can cause muscle wasting and fatigue."
+L,Leucine,Leu,Nonpolar aliphatic,false,"The most common amino acid; a branched-chain residue central to protein folding and muscle signaling.","Essential branched-chain amino acid; deficiency can impair muscle maintenance and growth."
+K,Lysine,Lys,Positively charged,false,"Long positively charged side chain; a frequent target for chemical tags that switch protein activity on and off.","Essential in the diet; deficiency can cause fatigue, slowed growth, and impaired immune function."
+M,Methionine,Met,Nonpolar aliphatic,false,"Sulfur-containing; encoded by the start codon, so nearly every protein begins with it.","Essential in the diet; deficiency can impair growth and lead to fat accumulation in the liver."
+F,Phenylalanine,Phe,Aromatic,false,"Large aromatic ring; packs into protein cores and is the body's precursor to tyrosine.","Essential in the diet; deficiency is rare but can cause confusion and low energy."
+P,Proline,Pro,Nonpolar aliphatic,true,"Its ring locks the backbone into kinks, often breaking helices and forming tight turns.",
+S,Serine,Ser,Polar uncharged,true,"Small hydroxyl side chain; a common site for regulatory phosphorylation and a player in enzyme catalysis.",
+T,Threonine,Thr,Polar uncharged,false,"Hydroxyl side chain; like serine, a frequent target of regulatory phosphorylation.","Essential in the diet; deficiency can impair immune function and digestion."
+W,Tryptophan,Trp,Aromatic,false,"The largest amino acid; its bulky ring is rare and serves as a precursor to serotonin and niacin.","Essential in the diet; severe deficiency contributes to pellagra-like symptoms and low mood."
+Y,Tyrosine,Tyr,Aromatic,true,"Aromatic with a hydroxyl group; phosphorylation here is a key on/off switch in cell signaling.",
+V,Valine,Val,Nonpolar aliphatic,false,"A branched-chain amino acid that fills the hydrophobic cores of proteins.","Essential branched-chain amino acid; deficiency can cause muscle weakness and neurological symptoms."

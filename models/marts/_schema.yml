@@ -111,6 +111,35 @@ models:
         tests:
           - not_null
 
+  - name: fact_protein_aa_composition
+    description: >
+      Amino-acid composition in long format: one row per (protein, amino acid)
+      for the 20 standard amino acids, with residue count and pct_of_sequence.
+      Derived from dim_protein.sequence; joins the seed_amino_acids lookup on
+      amino_acid_code. Percentages sum to ~100% per protein (just under for the
+      few proteins carrying non-standard residues like selenocysteine).
+    columns:
+      - name: uniprot_accession
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_protein')
+                field: uniprot_accession
+      - name: amino_acid_code
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('seed_amino_acids')
+                field: amino_acid_code
+      - name: count
+        tests:
+          - not_null
+      - name: pct_of_sequence
+        tests:
+          - not_null
+
   - name: fact_drug_target_disease
     description: "Drug-target-disease triples from Open Targets clinical_target."
     columns:

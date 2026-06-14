@@ -3,7 +3,7 @@
 > A living atlas of every human protein — what it does, who it talks to, what goes wrong when it breaks — navigated by an AI that learned biology from sequence alone.
 
 <!-- MAINTAINED: links -->
-[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [Live demo](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/) · **Status**: Part 7 complete — guided tour and polish pass live
+[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [Live demo](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/) · **Status**: Part 8 complete — amino acid composition atlas live
 <!-- /MAINTAINED -->
 
 <!-- MAINTAINED: hero -->
@@ -37,7 +37,7 @@ The atlas demonstrates end-to-end data engineering on a substantive domain. A re
 - Hand-written narratives for the top 100 culturally famous proteins (insulin, hemoglobin, EGFR, TP53, BRCA1, CFTR, etc.); LLM-generated rewrites for the remaining ~20,000.
 - Nearest-neighbor search by sequence — any protein sequence can be dropped in to find its closest matches in the human proteome.
 - Searchable by gene symbol, UniProt accession, or protein name.
-- Side-tab atlas of all 20 amino acids with deficiency notes.
+- Per-protein amino acid composition tab: full sequence, plus its 20 amino acids ranked by abundance and colored by side-chain chemistry, with essential-amino-acid markers and tooltips.
 - 90-second guided tour for first-time visitors.
 <!-- /MAINTAINED -->
 
@@ -189,17 +189,20 @@ uv run dagster dev -m atlas.definitions
 ## Status
 
 <!-- MAINTAINED: status -->
-**Current status**: Part 7 complete — the
+**Current status**: Part 8 complete — every protein's story card now has an
+amino acid composition tab showing its full sequence and its 20 amino acids
+ranked from most to least common, with a relative bar for each. The
 [live demo](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/)
 opens with a guided 90-second tour and "reading this chart" insight cards, and
 every surface has human-readable empty/loading/error states. Search any protein
-to see its story card, STRING interactome, ESM-2/UMAP sequence neighborhood, and
-clinical profile; cross-references are clickable, following the ligand → receptor
-→ drug navigation path (insulin → INSR, where the insulin therapies live). The UI
-queries MotherDuck and Qdrant directly — no API tier. The underlying data layer
-(Part 5) holds 20,431 proteins in `dim_protein`: 100 with hand-authored
-narratives, 17,073 with Claude Haiku rewrites, and 3,258 showing "No information
-available" where UniProt has no annotation.
+to see its story card, STRING interactome, ESM-2/UMAP sequence neighborhood,
+clinical profile, and amino acid composition; cross-references are clickable,
+following the ligand → receptor → drug navigation path (insulin → INSR, where
+the insulin therapies live). The UI queries MotherDuck and Qdrant directly — no
+API tier. The underlying data layer (Part 5) holds 20,431 proteins in
+`dim_protein`: 100 with hand-authored narratives, 17,073 with Claude Haiku
+rewrites, and 3,258 showing "No information available" where UniProt has no
+annotation.
 
 Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 9 sequential parts:
 
@@ -210,7 +213,7 @@ Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 9 sequential part
 - [x] Part 5 — LLM rewrites + curation
 - [x] Part 6 — Streamlit UI vertical slice
 - [x] Part 7 — Polish: tour and design pass
-- [ ] Part 8 — Amino acid composition atlas
+- [x] Part 8 — Amino acid composition atlas
 - [ ] Part 9 — Documentation + deploy
 <!-- /MAINTAINED -->
 

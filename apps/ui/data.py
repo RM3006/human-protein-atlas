@@ -53,6 +53,7 @@ SELECT
     p.gene_symbol,
     p.protein_name,
     p.sequence_length,
+    p.sequence,
     p.pfam_id,
     p.function_raw,
     p.function_friendly,
@@ -217,6 +218,44 @@ def fetch_atlas(conn: duckdb.DuckDBPyConnection) -> dict[str, list[Any]]:
         "disease_count": [r[5] for r in rows],
         "drug_count": [r[6] for r in rows],
     }
+
+
+COMPOSITION_SQL = """
+SELECT
+    c.amino_acid_code,
+    aa.name,
+    aa.three_letter_code,
+    aa.category,
+    aa.produced_by_body,
+    aa.description,
+    aa.deficiency_note,
+    c."count",
+    c.pct_of_sequence
+FROM fact_protein_aa_composition c
+JOIN seed_amino_acids aa ON c.amino_acid_code = aa.amino_acid_code
+WHERE c.uniprot_accession = ?
+ORDER BY c.pct_of_sequence DESC
+"""
+
+
+def fetch_composition(conn: duckdb.DuckDBPyConnection, accession: str) -> list[dict[str, Any]]:
+    """Return the 20-row amino-acid composition for a protein, richest first."""
+    with _query_lock:
+        rows = conn.execute(COMPOSITION_SQL, [accession]).fetchall()
+    return [
+        {
+            "amino_acid_code": r[0],
+            "name": r[1],
+            "three_letter_code": r[2],
+            "category": r[3],
+            "produced_by_body": r[4],
+            "description": r[5],
+            "deficiency_note": r[6],
+            "count": r[7],
+            "pct_of_sequence": r[8],
+        }
+        for r in rows
+    ]
 
 
 def fetch_sequence_lengths(

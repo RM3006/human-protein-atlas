@@ -555,6 +555,28 @@ CREATE TABLE fact_embedding (
     was_truncated       BOOLEAN,                -- TRUE if sequence was clipped to 1022 aa
     computed_at         TIMESTAMP
 );
+
+-- Amino-acid composition, derived from dim_protein.sequence (Part 8, no external
+-- source). Grain: one row per (protein, amino_acid_code) for the 20 standard
+-- amino acids. Non-standard residues (e.g. selenocysteine 'U') are excluded, so
+-- pct_of_sequence sums to just under 100% for the handful of proteins carrying them.
+CREATE TABLE fact_protein_aa_composition (
+    uniprot_accession   VARCHAR,                -- FK to dim_protein
+    amino_acid_code     VARCHAR,                -- FK to seed_amino_acids
+    count               INTEGER,                -- residues of this type in the sequence
+    pct_of_sequence     DOUBLE                  -- count / sequence_length * 100, rounded to 2dp
+);
+
+-- Amino-acid reference data (hand-written seed, not derived from any source)
+CREATE TABLE seed_amino_acids (
+    amino_acid_code     VARCHAR PRIMARY KEY,    -- A, R, N, ... (20 standard codes)
+    name                VARCHAR,                -- "Alanine"
+    three_letter_code   VARCHAR,                -- "Ala"
+    category            VARCHAR,                -- "Nonpolar aliphatic", "Aromatic", ...
+    produced_by_body    BOOLEAN,                -- FALSE for the 9 essential amino acids
+    description         VARCHAR,                -- one-sentence biochemistry note
+    deficiency_note     VARCHAR                 -- NULL for non-essential amino acids (rule 5)
+);
 ```
 
 This is a textbook **star schema**: `dim_protein` and `dim_disease` and `dim_drug` at the center, fact tables linking them. dbt models it cleanly. DuckDB / MotherDuck queries it fast. Every story card is **one query**: pick a `uniprot_accession`, fan out via the fact tables, return.

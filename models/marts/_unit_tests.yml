@@ -1,0 +1,58 @@
+version: 2
+
+unit_tests:
+  - name: test_aa_composition_hand_counted
+    description: >
+      Hand-counted fixture for fact_protein_aa_composition. Sequence 'ACDACA'
+      (length 6) has A x3 (50%), C x2 (33.33%), D x1 (16.67%); every other
+      standard amino acid is 0. Verifies the per-letter count arithmetic, the
+      UNPIVOT to 20 rows per protein, and the pct_of_sequence rounding.
+    model: fact_protein_aa_composition
+    given:
+      - input: ref('dim_protein')
+        rows:
+          - {uniprot_accession: "TEST1", sequence: "ACDACA", sequence_length: 6}
+      - input: ref('seed_amino_acids')
+        rows:
+          - {amino_acid_code: "A"}
+          - {amino_acid_code: "R"}
+          - {amino_acid_code: "N"}
+          - {amino_acid_code: "D"}
+          - {amino_acid_code: "C"}
+          - {amino_acid_code: "E"}
+          - {amino_acid_code: "Q"}
+          - {amino_acid_code: "G"}
+          - {amino_acid_code: "H"}
+          - {amino_acid_code: "I"}
+          - {amino_acid_code: "L"}
+          - {amino_acid_code: "K"}
+          - {amino_acid_code: "M"}
+          - {amino_acid_code: "F"}
+          - {amino_acid_code: "P"}
+          - {amino_acid_code: "S"}
+          - {amino_acid_code: "T"}
+          - {amino_acid_code: "W"}
+          - {amino_acid_code: "Y"}
+          - {amino_acid_code: "V"}
+    expect:
+      rows:
+        - {uniprot_accession: "TEST1", amino_acid_code: "A", count: 3, pct_of_sequence: 50.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "C", count: 2, pct_of_sequence: 33.33}
+        - {uniprot_accession: "TEST1", amino_acid_code: "D", count: 1, pct_of_sequence: 16.67}
+        - {uniprot_accession: "TEST1", amino_acid_code: "R", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "N", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "E", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "Q", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "G", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "H", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "I", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "L", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "K", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "M", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "F", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "P", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "S", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "T", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "W", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "Y", count: 0, pct_of_sequence: 0.0}
+        - {uniprot_accession: "TEST1", amino_acid_code: "V", count: 0, pct_of_sequence: 0.0}

@@ -1,10 +1,11 @@
 """Content and pure step logic for the guided 90-second tour (Part 7).
 
-Four narrated stops, each pinned to one UniProt accession: a receptor everyone
+Five narrated stops, each pinned to one UniProt accession: a receptor everyone
 has felt (sight), an enzyme everyone has heard of (a cancer drug target), a
-transcription factor everyone has heard of (the genome's guardian), and a
-protein nobody has heard of (the long tail, most of the roughly 20,000 dots on
-the atlas look more like this one than like the first three).
+transcription factor everyone has heard of (the genome's guardian), that same
+cancer drug target again seen through its amino acid composition (Part 8), and
+a protein nobody has heard of (the long tail, most of the roughly 20,000 dots
+on the atlas look more like this one than like the first three).
 
 Each step names one tab (tab_label, matching the st.tabs labels in app.py
 exactly) and explains, in tab_explanation, what that protein looks like there
@@ -82,6 +83,23 @@ TOUR_STEPS: tuple[TourStep, ...] = (
         ),
     ),
     TourStep(
+        accession="P00533",
+        title="What EGFR is built from",
+        narration=(
+            "EGFR's 1,210 amino acids aren't interchangeable: the chemistry of each "
+            "one shapes how the protein folds, where it sits in the cell membrane, "
+            "and how a drug can reach it."
+        ),
+        tab_label="Amino acid composition",
+        tab_explanation=(
+            "Open the Amino acid composition tab. EGFR's full sequence is shown "
+            "alongside its 20 amino acids ranked from most to least common, colored "
+            "by side-chain chemistry. Leucine, a hydrophobic amino acid, comes out "
+            "on top at just over 9% — fitting for a receptor anchored in the cell's "
+            "membrane."
+        ),
+    ),
+    TourStep(
         accession="Q63HN1",
         title="The long tail",
         narration=(
@@ -102,7 +120,7 @@ TOUR_STEPS: tuple[TourStep, ...] = (
 
 
 def progress_label(step_index: int) -> str:
-    """'Step 2 of 4' for the tour card's eyebrow."""
+    """'Step 2 of 5' for the tour card's eyebrow."""
     return f"Step {step_index + 1} of {len(TOUR_STEPS)}"
 
 
