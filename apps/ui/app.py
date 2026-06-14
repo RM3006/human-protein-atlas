@@ -491,6 +491,7 @@ def render_search(selected: str) -> None:
     from `index=None` keeps the dropdown scrolled to the top of the results.
     """
     accessions, labels = protein_index()
+    search_key = f"protein_search_{st.session_state.get('protein_search_seq', 0)}"
     choice = st.selectbox(
         "Find a protein",
         options=accessions,
@@ -498,10 +499,13 @@ def render_search(selected: str) -> None:
         format_func=lambda a: labels.get(a, a),
         placeholder="Search a protein — insulin, TP53, EGFR …",
         label_visibility="collapsed",
-        key="protein_search",
+        key=search_key,
     )
     if choice is not None and choice != selected:
-        st.session_state.protein_search = None
+        # Rotate the widget's key so the next run starts a fresh (empty) selectbox —
+        # Streamlit disallows resetting a widget's own session_state after it's
+        # been instantiated in the same run.
+        st.session_state.protein_search_seq = st.session_state.get("protein_search_seq", 0) + 1
         select(choice)
 
 
