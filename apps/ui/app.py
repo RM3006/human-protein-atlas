@@ -28,14 +28,16 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import duckdb
 import plotly.graph_objects as go
 import streamlit as st
+from qdrant_client.http.exceptions import ApiException
 
 # `streamlit run apps/ui/app.py` only puts apps/ui on sys.path; add the project root
 # so the absolute `apps.ui.*` imports resolve the same way they do under pytest.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from apps.ui import data, render  # noqa: E402
+from apps.ui import data, render, tour  # noqa: E402
 
 DEFAULT_ACCESSION = "P01308"  # insulin
 
@@ -60,17 +62,17 @@ def get_qdrant() -> Any:
     return data.make_qdrant_client(_secret("QDRANT_URL"), _secret("QDRANT_API_KEY"))
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Loading the protein atlas…")
 def load_atlas() -> dict[str, list[Any]]:
     return data.fetch_atlas(get_conn())
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Loading story card…")
 def load_story_card(accession: str) -> dict[str, Any] | None:
     return data.fetch_story_card(get_conn(), accession)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Loading protein index…")
 def protein_index() -> tuple[list[str], dict[str, str]]:
     """All proteins as (accessions sorted by label, accession -> 'GENE (Name)' label)."""
     rows = data.list_proteins(get_conn())
@@ -79,7 +81,7 @@ def protein_index() -> tuple[list[str], dict[str, str]]:
     return accessions, labels
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Finding similar proteins…")
 def load_neighbors(accession: str, k: int = 20) -> list[dict[str, Any]]:
     return data.find_neighbors(get_qdrant(), accession, k)
 
@@ -100,6 +102,71 @@ def current_accession() -> str:
     if "selected_accession" not in st.session_state:
         st.session_state.selected_accession = st.query_params.get("accession", DEFAULT_ACCESSION)
     return st.session_state.selected_accession
+
+
+# ---------------------------------------------------------------------------
+# Guided tour — four narrated stops, content in apps/ui/tour.py
+# ---------------------------------------------------------------------------
+
+
+def start_tour() -> None:
+    st.session_state.tour_pre_accession = current_accession()
+    st.session_state.tour_step = 0
+    select(tour.TOUR_STEPS[0].accession)
+
+
+def tour_step_to(step_index: int) -> None:
+    st.session_state.tour_step = step_index
+    select(tour.TOUR_STEPS[step_index].accession)
+
+
+def end_tour() -> None:
+    """Leave the tour and jump back to whatever was selected before it started."""
+    st.session_state.tour_step = None
+    pre_accession = st.session_state.pop("tour_pre_accession", None)
+    select(pre_accession or DEFAULT_ACCESSION)
+
+
+def render_tour_button() -> None:
+    """The tour's entry-point button, shown beside the page title when inactive."""
+    if st.session_state.get("tour_step") is None and st.button(
+        "Take the 90-second tour", key="tour_start", type="primary"
+    ):
+        start_tour()
+
+
+def render_tour_banner(step: tour.TourStep, step_index: int) -> None:
+    """The active step's narration card, with Back / Next / Exit controls top right."""
+    with st.container(key="tour_card"):
+        col_label, col_nav = st.columns([2, 1], vertical_alignment="center")
+        with col_label:
+            st.markdown(
+                "<div style='color:#888888;font-size:0.72rem;font-weight:700;"
+                "text-transform:uppercase;letter-spacing:0.12em;'>"
+                f"Guided tour · {tour.progress_label(step_index)}</div>",
+                unsafe_allow_html=True,
+            )
+        with col_nav, st.container(key="tour_nav"):
+            if not tour.is_first_step(step_index) and st.button("← Back", key="tour_back"):
+                tour_step_to(step_index - 1)
+            label = "Finish →" if tour.is_last_step(step_index) else "Next →"
+            if st.button(label, key="tour_next", type="primary"):
+                if tour.is_last_step(step_index):
+                    end_tour()
+                else:
+                    tour_step_to(step_index + 1)
+            if st.button("Exit tour", key="tour_exit"):
+                end_tour()
+
+        st.markdown(
+            f"<div style='font-family:{DISPLAY_FONT};font-weight:700;font-size:1rem;"
+            f"color:#111111;margin-bottom:6px;'>{step.title}</div>"
+            f"<div style='color:#111111;font-size:0.95rem;line-height:1.55;"
+            f"margin-bottom:10px;'>{step.narration}</div>"
+            f"<div style='color:#111111;font-size:0.88rem;line-height:1.55;"
+            f"border-top:1px solid #ecdfb8;padding-top:10px;'>{step.tab_explanation}</div>",
+            unsafe_allow_html=True,
+        )
 
 
 DISPLAY_FONT = '"Space Grotesk", -apple-system, system-ui, sans-serif'
@@ -171,6 +238,62 @@ def inject_css() -> None:
         }
         [data-testid="stButton"] button:hover { color: #000; text-decoration: underline; }
 
+        /* Primary buttons (tour start / Next / Finish): solid ink, the one filled
+           chrome element — deliberately heavier than the borderless list links above. */
+        [data-testid="stButton"] button[kind="primary"] {
+            justify-content: center; text-align: center; padding: 0.5rem 1.4rem;
+            border: 1px solid #111111; border-radius: 8px; font-weight: 700;
+            color: #ffffff; background: #111111;
+        }
+        [data-testid="stButton"] button[kind="primary"]:hover {
+            color: #ffffff; text-decoration: none; background: #333333; border-color: #333333;
+        }
+
+        /* Tour Back / Exit: same pill shape as the primary button above, outlined
+           instead of filled, so the tour's button row reads as one control group. */
+        [data-testid="stButton"] button[kind="secondary"] {
+            justify-content: center; text-align: center; padding: 0.5rem 1.4rem;
+            border: 1px solid #111111; border-radius: 8px; font-weight: 700;
+            color: #111111; background: #ffffff;
+        }
+        [data-testid="stButton"] button[kind="secondary"]:hover {
+            color: #111111; text-decoration: none; background: #f5f5f5;
+        }
+
+        /* Tour Back / Next / Finish / Exit: plain underlined text in the tour card's
+           dark brown, laid out as a tight row. [kind=...] is repeated to outweigh
+           the specificity of the rules above. */
+        .st-key-tour_nav {
+            display: flex; flex-direction: row; justify-content: flex-end;
+            align-items: center; gap: 0.4rem; margin-top: 10px;
+        }
+        .st-key-tour_nav [data-testid="stButton"] button[kind="primary"],
+        .st-key-tour_nav [data-testid="stButton"] button[kind="secondary"] {
+            padding: 0.1rem 0.2rem; font-size: 0.82rem; font-weight: 600;
+            border: none; border-radius: 0; text-decoration: underline;
+            color: #8a6d1f; background: transparent;
+        }
+        .st-key-tour_nav [data-testid="stButton"] button[kind="primary"]:hover,
+        .st-key-tour_nav [data-testid="stButton"] button[kind="secondary"]:hover {
+            color: #a3821f; background: transparent; text-decoration: underline;
+        }
+
+        /* Tour instruction card: a warm tint marks this as tutorial chrome, kept
+           separate from the neutral .card used for protein data everywhere else. */
+        .st-key-tour_card {
+            background: #fdf6e3;
+            border: 1px solid #ecdfb8;
+            border-radius: 10px;
+            padding: 4px 26px 22px;
+            margin-bottom: 4px;
+        }
+
+        /* Atlas insight card: thinner than Streamlit's default st.info padding, so it
+           reads as a quiet caption rather than a competing focal point. */
+        .st-key-atlas_insight [data-testid="stAlertContainer"] {
+            padding-top: 0.5rem; padding-bottom: 0.5rem;
+        }
+
         /* Search dropdown / slider: #e6e6e6 frame, ink accents — chrome stays monochrome. */
         [data-baseweb="select"] > div { border-color: #e6e6e6 !important; border-radius: 8px; }
         [data-testid="stSlider"] [role="slider"] { background-color: #111111 !important; }
@@ -181,13 +304,21 @@ def inject_css() -> None:
 
 
 def app_header() -> None:
+    col_title, col_tour = st.columns([5, 2], vertical_alignment="center")
+    with col_title:
+        st.markdown(
+            f"<div style='font-family:{DISPLAY_FONT};font-size:72px;font-weight:bold;"
+            "color:#111111;letter-spacing:-0.02em;line-height:1.05;'>Protein Atlas</div>"
+            "<div style='color:#888888;font-size:0.9rem;'>"
+            "Every human protein — what it does, who it talks to, and what "
+            "goes wrong when it breaks."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+    with col_tour:
+        render_tour_button()
     st.markdown(
-        "<div style='border-bottom:1px solid #e6e6e6;padding-bottom:0.8rem;margin-bottom:1.1rem;'>"
-        f"<div style='font-family:{DISPLAY_FONT};font-size:72px;font-weight:bold;"
-        "color:#111111;letter-spacing:-0.02em;line-height:1.05;'>Protein Atlas</div>"
-        "<div style='color:#888888;font-size:0.9rem;'>"
-        "Every human protein — what it does, who it talks to, and what goes wrong when it breaks."
-        "</div></div>",
+        "<div style='border-bottom:1px solid #e6e6e6;margin-bottom:1.1rem;'></div>",
         unsafe_allow_html=True,
     )
 
@@ -195,9 +326,7 @@ def app_header() -> None:
 def subheader(title: str, sub: str | None = None) -> None:
     """A quiet section label: #111 title (+ optional #888 caption) on an #e6e6e6 rule."""
     sub_html = (
-        f"<div style='color:#888888;font-size:0.82rem;margin-top:4px;max-width:90ch;'>{sub}</div>"
-        if sub
-        else ""
+        f"<div style='color:#888888;font-size:0.82rem;margin-top:4px;'>{sub}</div>" if sub else ""
     )
     st.markdown(
         "<div style='border-top:1px solid #e6e6e6;margin-top:1.2rem;padding-top:0.9rem;"
@@ -354,17 +483,25 @@ def render_kpis(card: dict[str, Any], threshold: float) -> None:
 
 
 def render_search(selected: str) -> None:
+    """A reset-after-use search box: it never carries a value into the next run.
+
+    With ~20,000 options, pre-selecting the current protein (via `index`) anchors
+    the dropdown's virtualized list to that position, so typing to filter opens
+    on a near-empty view scrolled to where that item used to be. Always starting
+    from `index=None` keeps the dropdown scrolled to the top of the results.
+    """
     accessions, labels = protein_index()
-    index = accessions.index(selected) if selected in accessions else 0
     choice = st.selectbox(
         "Find a protein",
         options=accessions,
-        index=index,
+        index=None,
         format_func=lambda a: labels.get(a, a),
         placeholder="Search a protein — insulin, TP53, EGFR …",
         label_visibility="collapsed",
+        key="protein_search",
     )
     if choice is not None and choice != selected:
+        st.session_state.protein_search = None
         select(choice)
 
 
@@ -770,10 +907,10 @@ def build_atlas_figure(
         legend={
             "orientation": "v",
             "yanchor": "top",
-            "y": 1,
+            "y": 1 - 18 / height,
             "xanchor": "left",
             "x": 1.02,
-            "font": {"size": 10},
+            "font": {"size": 14},
         },
         xaxis={"visible": False, "range": x_range},
         yaxis={"visible": False, "range": y_range},
@@ -801,7 +938,7 @@ def focused_minimap(atlas: dict[str, list[Any]], selected: str) -> go.Figure | N
         set(),
         x_range=[sx - half_w, sx + half_w],
         y_range=[sy - half_h, sy + half_h],
-        height=300,
+        height=420,
         marker_size=8,
         show_legend=True,
     )
@@ -814,11 +951,17 @@ def render_neighborhood_tab(card: dict[str, Any], selected: str) -> None:
         "different axis from the interactome (STRING measures physical contact; "
         "this measures sequence resemblance, with no notion of “talking to”).",
     )
+    with st.container(key="atlas_insight"):
+        st.info(render.ATLAS_INSIGHT)
     atlas = load_atlas()
-    neighbors = load_neighbors(selected)
+    try:
+        neighbors = load_neighbors(selected)
+    except ApiException:
+        st.warning("Sequence-similarity search is temporarily unavailable.")
+        neighbors = []
     neighbor_accs = {n["accession"] for n in neighbors}
 
-    _, mid, _ = st.columns([1, 2, 1])
+    _, mid, _ = st.columns([1, 4, 1])
     with mid:
         minimap = focused_minimap(atlas, selected)
         if minimap is not None:
@@ -831,7 +974,7 @@ def render_neighborhood_tab(card: dict[str, Any], selected: str) -> None:
         st.caption("No similar proteins found.")
     else:
         seq_lengths = load_sequence_lengths(tuple(n["accession"] for n in neighbors))
-        with st.container(height=235):
+        with st.container(height=313):
             for neighbor in neighbors:
                 metric = render.neighbor_metric_label(
                     neighbor["similarity"], seq_lengths.get(neighbor["accession"])
@@ -840,7 +983,6 @@ def render_neighborhood_tab(card: dict[str, Any], selected: str) -> None:
     st.caption(render.NEIGHBORS_HELP_CAPTION)
 
     with st.expander("Explore the full atlas of ~20,000 proteins"):
-        st.caption(render.ATLAS_INSIGHT)
         full = build_atlas_figure(atlas, selected, neighbor_accs, height=560)
         event = st.plotly_chart(full, width="stretch", on_select="rerun", key="full_atlas")
         _handle_point_click(event, selected)
@@ -852,11 +994,9 @@ def render_neighborhood_tab(card: dict[str, Any], selected: str) -> None:
 
 
 def render_diseases(card: dict[str, Any], threshold: float) -> None:
-    st.markdown(
-        "<div style='font-weight:700;color:#111111;margin-bottom:2px;'>Diseases linked to it</div>"
-        "<div style='color:#888888;font-size:0.8rem;margin-bottom:10px;'>"
-        "Conditions associated with this protein — strongest evidence first.</div>",
-        unsafe_allow_html=True,
+    subheader(
+        "Diseases linked to it",
+        "Conditions associated with this protein — strongest evidence first.",
     )
     diseases = sorted(
         (d for d in card["top_diseases"] if d["overall_score"] >= threshold),
@@ -883,12 +1023,7 @@ def render_diseases(card: dict[str, Any], threshold: float) -> None:
 
 
 def render_drugs(card: dict[str, Any]) -> None:
-    st.markdown(
-        "<div style='font-weight:700;color:#111111;margin-bottom:2px;'>Drugs that target it</div>"
-        "<div style='color:#888888;font-size:0.8rem;margin-bottom:10px;'>"
-        "Medicines that act directly on this protein.</div>",
-        unsafe_allow_html=True,
-    )
+    subheader("Drugs that target it", "Medicines that act directly on this protein.")
     drugs = sorted(card["approved_drugs"], key=lambda d: d["max_phase"] or 0, reverse=True)
     if not drugs:
         st.markdown(
@@ -926,10 +1061,24 @@ def render_clinical_tab(card: dict[str, Any], threshold: float) -> None:
 
 def main() -> None:
     inject_css()
+
+    try:
+        get_conn()
+    except duckdb.Error:
+        st.error(
+            "Could not connect to the database. MotherDuck may be waking up from "
+            "idle — please refresh in a moment."
+        )
+        return
+
     selected = current_accession()
     threshold = render_sidebar(selected)
 
     app_header()
+    tour_step_index = st.session_state.get("tour_step")
+    if tour_step_index is not None:
+        render_tour_banner(tour.TOUR_STEPS[tour_step_index], tour_step_index)
+
     card = load_story_card(selected)
     if card is None:
         st.error(f"No protein found for accession “{selected}”. Try the search in the sidebar.")

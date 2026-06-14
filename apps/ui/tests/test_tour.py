@@ -1,0 +1,51 @@
+"""Value-checking tests for the guided tour content and step logic (apps/ui/tour.py).
+
+Accessions are checked against the live atlas (Part 7 planning): P08100 (RHO,
+Receptors), P00533 (EGFR, Enzymes, 79 drugs and 503 STRING interactions), P04637
+(TP53, Transcription factors, top 5 linked diseases are all cancers), and Q63HN1
+(SPATA31F2P, Unclassified, zero annotation/interactions/diseases/drugs and an
+isolated UMAP position — the "empty zone" stop).
+"""
+
+from apps.ui import tour
+
+VALID_TAB_LABELS = {
+    "Interactome topology",
+    "Sequence neighborhood",
+    "Clinical & therapeutic profile",
+}
+
+
+def test_tour_has_four_steps() -> None:
+    assert len(tour.TOUR_STEPS) == 4
+
+
+def test_tour_step_accessions_are_the_roadmap_anchors() -> None:
+    accessions = [step.accession for step in tour.TOUR_STEPS]
+    assert accessions == ["P08100", "P00533", "P04637", "Q63HN1"]
+
+
+def test_tour_steps_have_content() -> None:
+    for step in tour.TOUR_STEPS:
+        assert step.title
+        assert step.narration
+        assert step.tab_label in VALID_TAB_LABELS
+        assert step.tab_explanation
+
+
+def test_empty_protein_does_not_point_at_clinical_tab() -> None:
+    """Q63HN1 has zero diseases and zero drugs, so its tab can't be the clinical one."""
+    q63hn1 = next(step for step in tour.TOUR_STEPS if step.accession == "Q63HN1")
+    assert q63hn1.tab_label != "Clinical & therapeutic profile"
+
+
+def test_progress_label() -> None:
+    assert tour.progress_label(0) == "Step 1 of 4"
+    assert tour.progress_label(3) == "Step 4 of 4"
+
+
+def test_first_and_last_step() -> None:
+    assert tour.is_first_step(0)
+    assert not tour.is_first_step(1)
+    assert not tour.is_last_step(2)
+    assert tour.is_last_step(3)
