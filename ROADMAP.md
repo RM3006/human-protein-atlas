@@ -248,31 +248,30 @@ Before building:
 
 ## Part 8 — Amino acid composition atlas
 
-**Goal**: every protein's amino-acid composition is computed and cross-linked, in both directions, to a 20-entry amino-acid glossary.
+**Goal**: every protein's amino-acid composition is computed and shown alongside its full sequence, ranked from most to least common amino acid. The atlas stays protein-first — no cross-protein "richest in X" ranking.
 
 **Deliverables**
-- `models/seeds/seed_amino_acids.csv` — 20 rows: 1-letter code, name, three-letter code, category, one-sentence description, deficiency note (`NULL` for non-essential amino acids — no invented deficiency stories per rule 5).
-- `models/marts/fct_protein_aa_composition.sql` — one row per `(uniprot_accession, amino_acid_code)` with `count` and `pct_of_sequence`, derived from `dim_protein.sequence`.
-- Story-card composition section: each protein's amino-acid breakdown, with each entry linking to its glossary card.
-- Amino-acid glossary tab: 20 cards, each showing the proteins richest in that amino acid (computed from the mart) — the reverse link.
+- `models/seeds/seed_amino_acids.csv` — 20 rows: 1-letter code, name, three-letter code, category, produced-by-body flag, one-sentence description, deficiency note (`NULL` for non-essential amino acids — no invented deficiency stories per rule 5).
+- `models/marts/fact_protein_aa_composition.sql` — one row per `(uniprot_accession, amino_acid_code)` with `count` and `pct_of_sequence`, derived from `dim_protein.sequence`.
+- Story-card "Amino acid composition" tab (4th tab, after "Clinical & therapeutic profile"): the protein's full sequence, then its 20 amino acids ranked by `pct_of_sequence` descending, most common first.
 - dbt fixture test for the composition mart.
 
 **Tasks**
 1. Author the 20-row seed (name, category, description, deficiency note — `NULL` where there's no real deficiency story).
-2. Build `fct_protein_aa_composition`: per-letter `length(sequence) - length(replace(sequence, letter, ''))` counts, `UNPIVOT`ed to long format. Joins to the seed on `amino_acid_code` — a lookup join, distinct from the `uniprot_accession` cross-database join key (rule 1 still governs protein-to-protein joins, not this).
+2. Build `fact_protein_aa_composition`: per-letter `length(sequence) - length(replace(sequence, letter, ''))` counts, `UNPIVOT`ed to long format. Joins to the seed on `amino_acid_code` — a lookup join, distinct from the `uniprot_accession` cross-database join key (rule 1 still governs protein-to-protein joins, not this).
 3. Add a dbt test: hand-count a short fixture sequence, assert the mart's counts and percentages match.
-4. Expose composition + seed via `apps/ui/data.py`; add the composition section to the story card.
-5. Build the glossary tab with "richest proteins" cross-links back to story cards.
-6. Update `docs/protein_atlas_data_source_manifest.md` and `ARCHITECTURE.md` for the new seed + mart (schema change trigger).
+4. Expose the sequence and composition via `apps/ui/data.py`.
+5. Build the "Amino acid composition" tab: full sequence display, then the 20 amino acids ranked by percentage with a relative bar.
+6. Update `docs/protein_atlas_data_source_manifest.md` for the new seed + mart (schema change trigger).
 
 **Exit criteria**
-- `fct_protein_aa_composition` has exactly 20 rows per protein, percentages summing to ~100% (within rounding).
-- EGFR's story card shows its composition breakdown; clicking "Cysteine" opens the glossary card, which lists EGFR among the proteins richest in cysteine.
+- `fact_protein_aa_composition` has exactly 20 rows per protein, percentages summing to ~100% (within rounding).
+- EGFR's story card shows its full sequence and its amino-acid composition ranked from most to least common (Leucine first, ~9.2%).
 - `dbt test` passes, including the new fixture test.
 
 **Risks**
 - `UNPIVOT` over ~20,000 proteins × 20 columns should be cheap, but verify against MotherDuck's free-tier memory limits (same risk as Part 3).
-- Keep glossary content general biochemistry — don't let descriptions drift into invented per-protein claims (rule 5).
+- Keep seed content general biochemistry — don't let descriptions drift into invented per-protein claims (rule 5).
 
 ---
 
@@ -334,7 +333,7 @@ After each part, verify the corresponding condition before starting the next par
 | 5 | Spot-check rated ≥17/20. |
 | 6 | Vertical slice works end-to-end on a fresh incognito browser. |
 | 7 | A non-technical person used it without confusion. |
-| 8 | EGFR's composition breakdown is correct and cross-links to/from the amino-acid glossary. |
+| 8 | EGFR's composition tab shows its full sequence and amino acids ranked from most to least common, colored by side-chain category. |
 | 9 | README impresses on first read (test with 2 friends). |
 
 If a checkpoint fails, **do not skip ahead**. Fix it first.

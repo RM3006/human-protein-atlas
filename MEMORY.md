@@ -850,3 +850,42 @@ Don't revisit this without a custom domain plus a reverse proxy / CDN that
 rewrites the served HTML (out of scope per CLAUDE.md rule 6 — no new
 infrastructure without asking). `page_icon`/`page_title` are unaffected (read
 client-side by the browser tab, not by unfurler bots) and need no further work.
+
+---
+
+## Part 8 redesign: drop cross-protein "richest in X" ranking and glossary cards (2026-06-14)
+
+### Decision
+
+The original Part 8 plan (bidirectional links: story card -> composition ->
+glossary card -> "richest proteins" -> story card) is dropped. The "Amino acid
+composition" tab (4th tab, after "Clinical & therapeutic profile") now shows,
+per protein: the full sequence, a side-chain-category rollup (stacked bar +
+legend), and the 20 amino acids ranked descending by `pct_of_sequence`, each
+with a category-colored bar, a "· essential" marker for the 9 diet-essential
+amino acids, and a native Streamlit "?" tooltip (description + deficiency
+note). `apps/ui/data.py`'s `fetch_amino_acid_glossary`/`fetch_richest_proteins`
+and the session-state view navigation (`current_view`, `show_glossary`,
+glossary card render functions) were removed entirely. The
+`seed_amino_acids`/`fact_protein_aa_composition` dbt layer (seed, mart, tests)
+is unchanged.
+
+### Why
+
+Live-verification against real MotherDuck data showed EGFR doesn't rank in the
+top-5 "richest in cysteine" (8th of 99 curated proteins) — the original exit
+criterion didn't hold. User's framing: "Our atlas is by protein, protein is the
+key element" — a cross-protein ranking and a separate glossary view broke that
+principle. The category rollup turns the previously-unused
+`category`/`produced_by_body`/`description`/`deficiency_note` seed columns into
+per-protein signal (a hydrophobicity/charge fingerprint) instead of static,
+repeated-per-protein trivia.
+
+### How to apply
+
+If a future part wants a cross-protein "richest in X" or amino-acid glossary
+view, re-derive it from `fact_protein_aa_composition` + `seed_amino_acids`
+(both still exist and are tested) — don't resurrect the removed UI code from
+git history without re-validating against real data first.
+`render.CATEGORY_COLORS`/`CATEGORY_LABEL`/`category_color`/`category_breakdown`
+are the reusable pieces for any future per-protein chemistry summary.
