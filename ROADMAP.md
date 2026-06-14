@@ -223,13 +223,18 @@ Before building:
 - "Reading this chart" blue insight card at the top of the atlas tab.
 - Empty / loading / error states on every surface.
 - Source attribution footer.
-- Favicon, page title, 1200×630 `og:image` for sharing.
+- Favicon and page title (🧬 / "Protein Atlas", via `st.set_page_config`).
 
 **Tasks**
 1. Write tour content; implement as stateful sequence.
 2. Add the insight card; polish all panel headers.
 3. Implement empty / loading / error states.
-4. Generate the `og:image` from the running atlas.
+
+**Dropped**
+- 1200×630 `og:image` for social sharing — not achievable on Streamlit Community
+  Cloud. Link-preview crawlers fetch the platform's generic static shell HTML and
+  never execute `app.py`, so no Python-level hook can set it. See `MEMORY.md`
+  ("og:image dropped from Part 7").
 
 **Exit criteria**
 - A non-technical friend can use the app for 5 minutes without confusion.

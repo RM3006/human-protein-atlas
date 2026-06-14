@@ -820,3 +820,33 @@ separate from `uniprot_accession` — rule 1 is unaffected (it governs
 cross-database protein joins, not glossary lookups). Don't invent
 `deficiency_note` content for the 11 non-essential amino acids — `NULL` per
 rule 5.
+
+---
+
+## og:image dropped from Part 7 — not feasible on Streamlit Community Cloud (2026-06-13)
+
+### Decision
+
+`ROADMAP.md` Part 7's "1200×630 `og:image` for sharing" deliverable is dropped
+(moved to a "Dropped" note in Part 7, pointing back here). Favicon (🧬 via
+`page_icon`) and `page_title="Protein Atlas"` stay as already set in
+`apps/ui/app.py`'s `st.set_page_config` — those work fine and needed no change.
+
+### Why
+
+Social-media link-unfurlers (Slack, LinkedIn, Twitter, Discord) fetch a URL's
+raw HTML and read `<meta property="og:image">` from it *without executing
+JavaScript*. Streamlit Community Cloud serves one generic `index.html` shell —
+identical across every hosted app, bundled inside the `streamlit` pip package
+itself — and `app.py` only runs client-side, after that shell loads, over a
+WebSocket. Confirmed against streamlit 1.58.0: `st.set_page_config`'s signature
+has no meta-tag parameter, and `st.html`/`st.markdown` only ever reach the
+post-load DOM, which the unfurler bot never sees. There is no Python-level hook
+into the server's initial HTML response.
+
+### How to apply
+
+Don't revisit this without a custom domain plus a reverse proxy / CDN that
+rewrites the served HTML (out of scope per CLAUDE.md rule 6 — no new
+infrastructure without asking). `page_icon`/`page_title` are unaffected (read
+client-side by the browser tab, not by unfurler bots) and need no further work.
