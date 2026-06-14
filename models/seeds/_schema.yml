@@ -29,6 +29,55 @@ seeds:
         tests:
           - not_null
 
+  - name: seed_amino_acids
+    description: >
+      The 20 standard amino acids: 1-letter code, full and three-letter names,
+      biochemical side-chain category, whether the human body synthesizes it
+      (produced_by_body = false marks the 9 dietary-essential amino acids), a
+      one-sentence plain-English description, and a deficiency note. The
+      deficiency note is populated only for the essential amino acids; it is NULL
+      for the body-produced ones, where no real dietary-deficiency story exists
+      (CLAUDE.md rule 5: no invented data). Lookup target for
+      fact_protein_aa_composition, joined on amino_acid_code.
+    config:
+      column_types:
+        amino_acid_code: varchar
+        name: varchar
+        three_letter_code: varchar
+        category: varchar
+        produced_by_body: boolean
+        description: varchar
+        deficiency_note: varchar
+    columns:
+      - name: amino_acid_code
+        description: "Single-letter IUPAC amino-acid code; the lookup join key."
+        tests:
+          - unique
+          - not_null
+      - name: name
+        description: "Full amino-acid name (e.g. Cysteine)."
+        tests:
+          - not_null
+      - name: three_letter_code
+        description: "Three-letter code (e.g. Cys)."
+        tests:
+          - unique
+          - not_null
+      - name: category
+        description: "Biochemical side-chain category (e.g. Aromatic, Positively charged)."
+        tests:
+          - not_null
+      - name: produced_by_body
+        description: "TRUE if the human body synthesizes it; FALSE for the 9 dietary-essential amino acids."
+        tests:
+          - not_null
+      - name: description
+        description: "One-sentence plain-English description of the amino acid."
+        tests:
+          - not_null
+      - name: deficiency_note
+        description: "What dietary deficiency causes; NULL for body-produced (non-essential) amino acids."
+
   - name: family_group_map
     description: >
       Priority-ordered mapping from HPA protein_class tokens to coarse family_group
