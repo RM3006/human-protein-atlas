@@ -37,7 +37,7 @@ The atlas demonstrates end-to-end data engineering on a substantive domain. A re
 - Hand-written narratives for the top 100 culturally famous proteins (insulin, hemoglobin, EGFR, TP53, BRCA1, CFTR, etc.); LLM-generated rewrites for the remaining ~20,000.
 - Nearest-neighbor search by sequence — any protein sequence can be dropped in to find its closest matches in the human proteome.
 - Searchable by gene symbol, UniProt accession, or protein name.
-- Side-tab atlas of all 20 amino acids with deficiency notes.
+- Per-protein amino acid composition tab: full sequence, plus its 20 amino acids ranked by abundance and colored by side-chain chemistry, with essential-amino-acid markers and tooltips.
 - 90-second guided tour for first-time visitors.
 <!-- /MAINTAINED -->
 

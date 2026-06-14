@@ -219,7 +219,7 @@ Before building:
 **Goal**: the project looks designed, not assembled.
 
 **Deliverables**
-- A guided 90-second tour: 4 narrated steps highlighting anchor proteins (Rhodopsin → EGFR → TP53 → an empty zone). Stateful sequence in `st.session_state`.
+- A guided 90-second tour: 5 narrated steps highlighting anchor proteins (Rhodopsin → EGFR → TP53 → EGFR's amino acid composition → an empty zone). Stateful sequence in `st.session_state`. The 5th step was added in Part 8.
 - "Reading this chart" blue insight card at the top of the atlas tab.
 - Empty / loading / error states on every surface.
 - Source attribution footer.
