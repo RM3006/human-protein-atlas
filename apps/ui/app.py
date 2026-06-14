@@ -28,8 +28,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import duckdb
 import plotly.graph_objects as go
 import streamlit as st
+from qdrant_client.http.exceptions import ApiException
 
 # `streamlit run apps/ui/app.py` only puts apps/ui on sys.path; add the project root
 # so the absolute `apps.ui.*` imports resolve the same way they do under pytest.
@@ -60,17 +62,17 @@ def get_qdrant() -> Any:
     return data.make_qdrant_client(_secret("QDRANT_URL"), _secret("QDRANT_API_KEY"))
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Loading the protein atlas…")
 def load_atlas() -> dict[str, list[Any]]:
     return data.fetch_atlas(get_conn())
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Loading story card…")
 def load_story_card(accession: str) -> dict[str, Any] | None:
     return data.fetch_story_card(get_conn(), accession)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Loading protein index…")
 def protein_index() -> tuple[list[str], dict[str, str]]:
     """All proteins as (accessions sorted by label, accession -> 'GENE (Name)' label)."""
     rows = data.list_proteins(get_conn())
@@ -79,7 +81,7 @@ def protein_index() -> tuple[list[str], dict[str, str]]:
     return accessions, labels
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Finding similar proteins…")
 def load_neighbors(accession: str, k: int = 20) -> list[dict[str, Any]]:
     return data.find_neighbors(get_qdrant(), accession, k)
 
@@ -286,6 +288,12 @@ def inject_css() -> None:
             margin-bottom: 4px;
         }
 
+        /* Atlas insight card: thinner than Streamlit's default st.info padding, so it
+           reads as a quiet caption rather than a competing focal point. */
+        .st-key-atlas_insight [data-testid="stAlertContainer"] {
+            padding-top: 0.5rem; padding-bottom: 0.5rem;
+        }
+
         /* Search dropdown / slider: #e6e6e6 frame, ink accents — chrome stays monochrome. */
         [data-baseweb="select"] > div { border-color: #e6e6e6 !important; border-radius: 8px; }
         [data-testid="stSlider"] [role="slider"] { background-color: #111111 !important; }
@@ -318,9 +326,7 @@ def app_header() -> None:
 def subheader(title: str, sub: str | None = None) -> None:
     """A quiet section label: #111 title (+ optional #888 caption) on an #e6e6e6 rule."""
     sub_html = (
-        f"<div style='color:#888888;font-size:0.82rem;margin-top:4px;max-width:90ch;'>{sub}</div>"
-        if sub
-        else ""
+        f"<div style='color:#888888;font-size:0.82rem;margin-top:4px;'>{sub}</div>" if sub else ""
     )
     st.markdown(
         "<div style='border-top:1px solid #e6e6e6;margin-top:1.2rem;padding-top:0.9rem;"
@@ -901,10 +907,10 @@ def build_atlas_figure(
         legend={
             "orientation": "v",
             "yanchor": "top",
-            "y": 1,
+            "y": 1 - 18 / height,
             "xanchor": "left",
             "x": 1.02,
-            "font": {"size": 10},
+            "font": {"size": 14},
         },
         xaxis={"visible": False, "range": x_range},
         yaxis={"visible": False, "range": y_range},
@@ -932,7 +938,7 @@ def focused_minimap(atlas: dict[str, list[Any]], selected: str) -> go.Figure | N
         set(),
         x_range=[sx - half_w, sx + half_w],
         y_range=[sy - half_h, sy + half_h],
-        height=300,
+        height=420,
         marker_size=8,
         show_legend=True,
     )
@@ -945,11 +951,17 @@ def render_neighborhood_tab(card: dict[str, Any], selected: str) -> None:
         "different axis from the interactome (STRING measures physical contact; "
         "this measures sequence resemblance, with no notion of “talking to”).",
     )
+    with st.container(key="atlas_insight"):
+        st.info(render.ATLAS_INSIGHT)
     atlas = load_atlas()
-    neighbors = load_neighbors(selected)
+    try:
+        neighbors = load_neighbors(selected)
+    except ApiException:
+        st.warning("Sequence-similarity search is temporarily unavailable.")
+        neighbors = []
     neighbor_accs = {n["accession"] for n in neighbors}
 
-    _, mid, _ = st.columns([1, 2, 1])
+    _, mid, _ = st.columns([1, 4, 1])
     with mid:
         minimap = focused_minimap(atlas, selected)
         if minimap is not None:
@@ -962,7 +974,7 @@ def render_neighborhood_tab(card: dict[str, Any], selected: str) -> None:
         st.caption("No similar proteins found.")
     else:
         seq_lengths = load_sequence_lengths(tuple(n["accession"] for n in neighbors))
-        with st.container(height=235):
+        with st.container(height=313):
             for neighbor in neighbors:
                 metric = render.neighbor_metric_label(
                     neighbor["similarity"], seq_lengths.get(neighbor["accession"])
@@ -971,7 +983,6 @@ def render_neighborhood_tab(card: dict[str, Any], selected: str) -> None:
     st.caption(render.NEIGHBORS_HELP_CAPTION)
 
     with st.expander("Explore the full atlas of ~20,000 proteins"):
-        st.caption(render.ATLAS_INSIGHT)
         full = build_atlas_figure(atlas, selected, neighbor_accs, height=560)
         event = st.plotly_chart(full, width="stretch", on_select="rerun", key="full_atlas")
         _handle_point_click(event, selected)
@@ -983,11 +994,9 @@ def render_neighborhood_tab(card: dict[str, Any], selected: str) -> None:
 
 
 def render_diseases(card: dict[str, Any], threshold: float) -> None:
-    st.markdown(
-        "<div style='font-weight:700;color:#111111;margin-bottom:2px;'>Diseases linked to it</div>"
-        "<div style='color:#888888;font-size:0.8rem;margin-bottom:10px;'>"
-        "Conditions associated with this protein — strongest evidence first.</div>",
-        unsafe_allow_html=True,
+    subheader(
+        "Diseases linked to it",
+        "Conditions associated with this protein — strongest evidence first.",
     )
     diseases = sorted(
         (d for d in card["top_diseases"] if d["overall_score"] >= threshold),
@@ -1014,12 +1023,7 @@ def render_diseases(card: dict[str, Any], threshold: float) -> None:
 
 
 def render_drugs(card: dict[str, Any]) -> None:
-    st.markdown(
-        "<div style='font-weight:700;color:#111111;margin-bottom:2px;'>Drugs that target it</div>"
-        "<div style='color:#888888;font-size:0.8rem;margin-bottom:10px;'>"
-        "Medicines that act directly on this protein.</div>",
-        unsafe_allow_html=True,
-    )
+    subheader("Drugs that target it", "Medicines that act directly on this protein.")
     drugs = sorted(card["approved_drugs"], key=lambda d: d["max_phase"] or 0, reverse=True)
     if not drugs:
         st.markdown(
@@ -1057,6 +1061,16 @@ def render_clinical_tab(card: dict[str, Any], threshold: float) -> None:
 
 def main() -> None:
     inject_css()
+
+    try:
+        get_conn()
+    except duckdb.Error:
+        st.error(
+            "Could not connect to the database. MotherDuck may be waking up from "
+            "idle — please refresh in a moment."
+        )
+        return
+
     selected = current_accession()
     threshold = render_sidebar(selected)
 
