@@ -237,6 +237,7 @@ WHERE c.uniprot_accession = ?
 ORDER BY c.pct_of_sequence DESC
 """
 
+
 def fetch_composition(conn: duckdb.DuckDBPyConnection, accession: str) -> list[dict[str, Any]]:
     """Return the 20-row amino-acid composition for a protein, richest first."""
     with _query_lock:
