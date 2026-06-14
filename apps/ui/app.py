@@ -112,7 +112,7 @@ def current_accession() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Guided tour — four narrated stops, content in apps/ui/tour.py
+# Guided tour — five narrated stops, content in apps/ui/tour.py
 # ---------------------------------------------------------------------------
 
 
