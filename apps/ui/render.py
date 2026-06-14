@@ -175,3 +175,56 @@ def chips(values: str | None) -> list[str]:
     if not values:
         return []
     return [token.strip() for token in values.split(",") if token.strip()]
+
+
+COMPOSITION_INSIGHT = (
+    "Every protein is a chain of these 20 building blocks in different proportions. "
+    "Here is the full sequence, and how often each amino acid appears in it, "
+    "ranked from most to least common — colored by the side-chain chemistry that "
+    "shapes how the protein folds and behaves."
+)
+
+# Side-chain category palette: a muted, cohesive set layered on the monochrome
+# chrome (warm/cool spread for separation). Distinct from the three semantic
+# data colors above — these encode amino-acid chemistry, not entity type.
+CATEGORY_COLORS = {
+    "Nonpolar aliphatic": "#5b7fa3",  # muted blue
+    "Aromatic": "#8a6fa8",  # muted violet
+    "Polar uncharged": "#4f8a8b",  # muted teal
+    "Positively charged": "#b5703f",  # muted terracotta
+    "Negatively charged": "#7a9466",  # muted sage
+}
+
+# Short, plain-English labels for the composition rollup strip.
+CATEGORY_LABEL = {
+    "Nonpolar aliphatic": "Hydrophobic",
+    "Aromatic": "Aromatic",
+    "Polar uncharged": "Polar",
+    "Positively charged": "Positive",
+    "Negatively charged": "Negative",
+}
+
+_CATEGORY_DEFAULT_COLOR = "#888888"
+
+
+def category_color(category: str | None) -> str:
+    """Hex color for an amino-acid side-chain category; grey for the unknown."""
+    return CATEGORY_COLORS.get(category or "", _CATEGORY_DEFAULT_COLOR)
+
+
+def category_breakdown(composition: list[dict[str, Any]]) -> list[tuple[str, float]]:
+    """Sum pct_of_sequence per side-chain category, largest share first.
+
+    Turns the per-amino-acid composition into a per-protein fingerprint: a
+    secreted protein reads polar-heavy, a membrane protein hydrophobic-heavy.
+    """
+    totals: dict[str, float] = {}
+    for entry in composition:
+        category = entry["category"]
+        totals[category] = totals.get(category, 0.0) + entry["pct_of_sequence"]
+    return sorted(totals.items(), key=lambda kv: kv[1], reverse=True)
+
+
+def aa_pct_label(pct: float, count: int) -> str:
+    """Format an amino-acid composition value: '4.96% (60 aa)'."""
+    return f"{pct:.2f}% ({count} aa)"

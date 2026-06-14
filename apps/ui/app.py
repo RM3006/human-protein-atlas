@@ -15,7 +15,9 @@ all structure (cards, sidebar, tabs, typography). Three semantic colors are
 layered on top, applied only to data *values*: slate-blue for proteins, crimson
 for diseases, emerald for drugs, plus a shared grey->violet "strength" scale for
 the interactome graph's edges. Chrome never takes a semantic hue; data values
-never take a chrome hue.
+never take a chrome hue. The amino acid composition tab is the one exception:
+it uses its own 5-color side-chain-category palette (render.CATEGORY_COLORS),
+scoped to that tab only.
 
 Queries MotherDuck + Qdrant directly via apps/ui/data.py (no API tier). Run with:
     streamlit run apps/ui/app.py
@@ -91,8 +93,13 @@ def load_sequence_lengths(accessions: tuple[str, ...]) -> dict[str, int]:
     return data.fetch_sequence_lengths(get_conn(), list(accessions))
 
 
+@st.cache_data(show_spinner="Loading composition…")
+def load_composition(accession: str) -> list[dict[str, Any]]:
+    return data.fetch_composition(get_conn(), accession)
+
+
 def select(accession: str) -> None:
-    """Set the selected protein and mirror it to the URL, then rerun."""
+    """Set the selected protein, mirror to the URL, then rerun."""
     st.session_state.selected_accession = accession
     st.query_params["accession"] = accession
     st.rerun()
@@ -1063,6 +1070,109 @@ def render_clinical_tab(card: dict[str, Any], threshold: float) -> None:
         render_drugs(card)
 
 
+# ---------------------------------------------------------------------------
+# Tab 4 — Amino acid composition: full sequence + ranked composition
+# ---------------------------------------------------------------------------
+
+
+def _aa_tooltip(entry: dict[str, Any]) -> str:
+    """Help text for an amino acid: its biochemical role, plus diet note if essential."""
+    parts = [entry.get("description") or ""]
+    if entry.get("deficiency_note"):
+        parts.append(entry["deficiency_note"])
+    return " ".join(p for p in parts if p)
+
+
+def _render_category_rollup(composition: list[dict[str, Any]]) -> None:
+    """A stacked bar + legend summarizing this protein's side-chain chemistry.
+
+    The per-amino-acid percentages, rolled up by category, become a per-protein
+    fingerprint readable at a glance (hydrophobic-heavy vs polar-heavy vs charged).
+    """
+    breakdown = render.category_breakdown(composition)
+    segments = "".join(
+        f"<div style='width:{pct:.2f}%;background:{render.category_color(cat)};'"
+        f" title='{render.CATEGORY_LABEL.get(cat, cat)} {pct:.1f}%'></div>"
+        for cat, pct in breakdown
+    )
+    legend = " &nbsp;·&nbsp; ".join(
+        f"<span style='color:{render.category_color(cat)};'>■</span> "
+        f"{render.CATEGORY_LABEL.get(cat, cat)} {pct:.0f}%"
+        for cat, pct in breakdown
+    )
+    st.markdown(
+        "<div style='margin-bottom:18px;'>"
+        "<div style='display:flex;height:10px;border-radius:5px;overflow:hidden;'>"
+        f"{segments}</div>"
+        f"<div style='color:#555555;font-size:0.8rem;margin-top:7px;'>{legend}</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_composition_row(entry: dict[str, Any], max_pct: float) -> None:
+    """One amino acid: its name and a bar relative to this protein's most common amino acid."""
+    col_icon_name, col_bar = st.columns([2, 3], vertical_alignment="center")
+    with col_icon_name:
+        col_icon, col_name = st.columns([1, 9], gap="xxsmall", vertical_alignment="center")
+        with col_icon:
+            st.markdown("", help=_aa_tooltip(entry))
+        with col_name:
+            essential = entry.get("produced_by_body") is False
+            marker = (
+                "<span style='color:#888888;font-size:0.72rem;'> · essential</span>"
+                if essential
+                else ""
+            )
+            st.markdown(
+                f"{entry['name']} ({entry['three_letter_code']}){marker}",
+                unsafe_allow_html=True,
+            )
+    with col_bar:
+        bar_pct = (entry["pct_of_sequence"] / max_pct * 100) if max_pct else 0.0
+        color = render.category_color(entry["category"])
+        st.markdown(
+            "<div style='margin-top:4px;'>"
+            "<div style='background:#e6e6e6;height:6px;border-radius:3px;'>"
+            f"<div style='background:{color};height:6px;width:{bar_pct:.1f}%;"
+            "border-radius:3px;'></div></div>"
+            "<div style='color:#888888;font-size:0.78rem;margin-top:2px;'>"
+            f"{render.aa_pct_label(entry['pct_of_sequence'], entry['count'])}</div></div>",
+            unsafe_allow_html=True,
+        )
+
+
+def render_composition_tab(card: dict[str, Any], accession: str) -> None:
+    subheader("Amino acid composition", render.COMPOSITION_INSIGHT)
+    sequence = card.get("sequence")
+    composition = load_composition(accession)
+    if not sequence or not composition:
+        st.caption("No sequence available for this protein.")
+        return
+    st.markdown(
+        "<div class='card' style='font-family:monospace;font-size:0.82rem;"
+        f"color:#111111;line-height:1.6;word-break:break-all;'>{sequence}</div>",
+        unsafe_allow_html=True,
+    )
+
+    _render_category_rollup(composition)
+
+    max_pct = max(e["pct_of_sequence"] for e in composition)
+    half = (len(composition) + 1) // 2
+    col_left, col_right = st.columns(2)
+    for col, entries in ((col_left, composition[:half]), (col_right, composition[half:])):
+        with col:
+            for entry in entries:
+                _render_composition_row(entry, max_pct)
+
+
+def render_footer() -> None:
+    st.divider()
+    st.caption(
+        "Data: UniProt (CC-BY) · STRING-DB (CC-BY) · Human Protein Atlas (CC-BY-SA) · "
+        "Open Targets (CC0). A portfolio project — not medical advice."
+    )
+
+
 def main() -> None:
     inject_css()
 
@@ -1091,8 +1201,13 @@ def main() -> None:
     render_identity(card)
     render_kpis(card, threshold)
 
-    tab_interactome, tab_neighborhood, tab_clinical = st.tabs(
-        ["Interactome topology", "Sequence neighborhood", "Clinical & therapeutic profile"]
+    tab_interactome, tab_neighborhood, tab_clinical, tab_composition = st.tabs(
+        [
+            "Interactome topology",
+            "Sequence neighborhood",
+            "Clinical & therapeutic profile",
+            "Amino acid composition",
+        ]
     )
     with tab_interactome:
         render_interactome_tab(card, threshold=threshold)
@@ -1100,12 +1215,10 @@ def main() -> None:
         render_neighborhood_tab(card, selected)
     with tab_clinical:
         render_clinical_tab(card, threshold)
+    with tab_composition:
+        render_composition_tab(card, selected)
 
-    st.divider()
-    st.caption(
-        "Data: UniProt (CC-BY) · STRING-DB (CC-BY) · Human Protein Atlas (CC-BY-SA) · "
-        "Open Targets (CC0). A portfolio project — not medical advice."
-    )
+    render_footer()
 
 
 main()

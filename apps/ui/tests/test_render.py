@@ -100,6 +100,33 @@ def test_ring_positions_spaces_nodes_evenly_on_a_circle() -> None:
         assert round(x * x + y * y, 6) == 1.0  # every node sits on the circle
 
 
+def test_aa_pct_label_formats_pct_and_count() -> None:
+    assert render.aa_pct_label(4.96, 60) == "4.96% (60 aa)"
+    assert render.aa_pct_label(0.0, 0) == "0.00% (0 aa)"
+
+
+def test_category_color_known_and_unknown() -> None:
+    assert render.category_color("Aromatic") == render.CATEGORY_COLORS["Aromatic"]
+    assert render.category_color("Not a category") == "#888888"
+    assert render.category_color(None) == "#888888"
+
+
+def test_category_breakdown_sums_and_sorts_descending() -> None:
+    composition = [
+        {"category": "Nonpolar aliphatic", "pct_of_sequence": 10.0},
+        {"category": "Polar uncharged", "pct_of_sequence": 5.0},
+        {"category": "Nonpolar aliphatic", "pct_of_sequence": 8.0},
+    ]
+    breakdown = render.category_breakdown(composition)
+    assert breakdown[0] == ("Nonpolar aliphatic", 18.0)
+    assert breakdown[1] == ("Polar uncharged", 5.0)
+
+
+def test_every_aa_category_has_a_color() -> None:
+    # CATEGORY_LABEL and CATEGORY_COLORS must cover the same set of categories.
+    assert set(render.CATEGORY_LABEL) == set(render.CATEGORY_COLORS)
+
+
 def test_every_family_group_has_a_color() -> None:
     # The dbt family_group buckets must all be colorable, else points fall to default.
     expected = {

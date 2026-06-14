@@ -17,6 +17,7 @@ def test_story_card_insulin_has_partners_but_no_drug(conn: duckdb.DuckDBPyConnec
     assert card["gene_symbol"] == "INS"
     assert card["family_group"] == "Secreted"
     assert card["tissue_specificity"] == "Tissue enhanced (pancreas)"
+    assert card["sequence"] == "MALWMRLLPLLALLALWGPDPAAA"
 
     partner_accessions = {p["accession"] for p in card["top_interaction_partners"]}
     assert "P06213" in partner_accessions  # INSR, the receptor drugs route through
@@ -118,3 +119,25 @@ def test_find_neighbors_drops_self_and_rounds_score() -> None:
     hits = data.find_neighbors(client, "P01308", k=10)
     assert [h["accession"] for h in hits] == ["P06213"]  # self (P01308) dropped
     assert hits[0]["similarity"] == 0.96
+
+
+_STANDARD_AA_CODES = set("ARNDCEQGHILKMFPSTWYV")
+
+
+def test_fetch_composition_returns_rows_sorted_by_pct(conn: duckdb.DuckDBPyConnection) -> None:
+    composition = data.fetch_composition(conn, "P01308")
+    assert len(composition) == 20
+    assert {c["amino_acid_code"] for c in composition} == _STANDARD_AA_CODES
+    pcts = [c["pct_of_sequence"] for c in composition]
+    assert pcts == sorted(pcts, reverse=True)
+    # The fixture gives Alanine ('A') the highest pct and Valine ('V') the lowest.
+    assert composition[0]["amino_acid_code"] == "A"
+    assert composition[0]["name"] == "Alanine"
+    assert composition[0]["category"] == "Nonpolar aliphatic"
+    assert composition[0]["produced_by_body"] is True
+    assert composition[0]["deficiency_note"] is None
+    assert composition[-1]["amino_acid_code"] == "V"
+    assert composition[-1]["name"] == "Valine"
+    assert composition[-1]["three_letter_code"] == "Val"
+    assert composition[-1]["produced_by_body"] is False
+    assert composition[-1]["deficiency_note"] == "Valine deficiency note."
