@@ -24,7 +24,7 @@ Python 3.11+ · `uv` · `ruff` · `pyright` strict · `pytest` · OpenTofu 1.8+ 
 CLAUDE.md  README.md  ARCHITECTURE.md  ROADMAP.md  SETUP.md  LICENSE  pyproject.toml  .env.example
 docs/        curation list, data-source manifest
 infra/       OpenTofu modules
-pipelines/   Dagster project; package `atlas/` (assets/ingest, assets/transform, assets/ml, resources, tests)
+pipelines/   Dagster project; package `atlas/` (assets/ingest, assets/llm, assets/ml, resources, tests)
 models/      dbt project (sources, staging, marts)
 apps/ui/     Streamlit on Community Cloud; queries MotherDuck + Qdrant directly (no API tier)
 notebooks/   exploratory; never imported elsewhere
