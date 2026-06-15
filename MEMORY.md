@@ -919,3 +919,33 @@ every UI-affecting change. If a future part wants a visual preview for
 contexts where the live link doesn't work well (e.g. an offline PDF export of
 the README), regenerate the screenshot at that time rather than resurrecting
 this dropped task.
+
+---
+
+## Default landing protein changed: insulin → collagen alpha-1(I) (COL1A1, P02452) (2026-06-15)
+
+### Decision
+
+`DEFAULT_ACCESSION` in `apps/ui/app.py` changed from `P01308` (insulin) to
+`P02452` (COL1A1) — the protein every fresh visitor lands on, including
+incognito loads with no `?accession=` query param.
+
+### Why
+
+Insulin's card has **zero approved drugs** under the ligand → receptor → drug
+navigation rule (see "Ligand → receptor → drug routing" above) — a visitor's
+very first card showed an empty drugs section, reading as a bug rather than a
+deliberate design choice. User proposed collagen: broadly recognizable (skin,
+bones, tendons, joints) and a structural protein, not a ligand, so it isn't
+subject to the same routing rule. Verified live against `STORY_CARD_SQL`:
+COL1A1 has populated `top_interaction_partners`, `top_diseases`
+(osteogenesis imperfecta types 1–4, Caffey disease), and `approved_drugs`
+(Ocriplasmin, Collagenase clostridium histolyticum) — every story-card section
+renders non-empty on first load.
+
+### How to apply
+
+If a future default-protein change is considered, check the candidate's
+`approved_drugs` via `STORY_CARD_SQL` first — ligands (hormones, growth
+factors) show zero drugs by design and make a poor first impression
+regardless of how famous they are.
