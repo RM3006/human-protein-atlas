@@ -283,6 +283,9 @@ Before building:
 - `README.md` with project description, hero screenshot, Mermaid architecture diagram, live URL, "how it works" section, tech stack table, license.
 - `ARCHITECTURE.md` fully written: section per layer with "used / considered / why."
 - Public Streamlit URL stable for ≥48 hours under demo load.
+- A cron-job.org cronjob pinging the app's `/healthz` endpoint every Tuesday and Friday
+  at 04:00 UTC so Community Cloud never sleeps the app (it sleeps after ~7 days of no
+  traffic), keeping the public link reachable without manual reboots. See SETUP.md Phase F2.
 - Showcase card on personal portfolio linking to live URL and GitHub.
 - ~300-word LinkedIn or Twitter writeup with a screenshot.
 
@@ -290,8 +293,9 @@ Before building:
 1. Write `README.md` with the Mermaid diagram.
 2. Write `ARCHITECTURE.md` layer by layer.
 3. Take and lightly edit the hero screenshot.
-4. Add showcase card to portfolio.
-5. Publish the LinkedIn post.
+4. Set up the cron-job.org cronjob on `/healthz` (SETUP.md Phase F2) so the public link never sleeps.
+5. Add showcase card to portfolio.
+6. Publish the LinkedIn post.
 
 **Exit criteria**
 - Live URL works on a fresh incognito browser.
