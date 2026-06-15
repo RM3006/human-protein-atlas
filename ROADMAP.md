@@ -326,8 +326,6 @@ Do **not** build these in Parts 1–8:
 - Multi-species support.
 - Variant pathogenicity prediction.
 
-Note these in the README as "where this project goes next" — that itself signals senior judgment.
-
 ---
 
 ## Checkpoints (don't skip)
