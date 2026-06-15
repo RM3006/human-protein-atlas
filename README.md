@@ -229,7 +229,7 @@ Data attribution to UniProt, STRING-DB, Human Protein Atlas, Open Targets, and C
 <!--
 This README is a CLAUDE-MAINTAINED file. Any change affecting scope, tech stack,
 architecture, data sources, or project status must update the corresponding section
-above. Auto-maintained sections are marked with <!-- MAINTAINED: section_name -->
-and <!-- /MAINTAINED --> comments. See CLAUDE.md "Documentation maintenance" for the
-trigger table and procedure.
+above. Auto-maintained sections are wrapped in "MAINTAINED: section_name" /
+"/MAINTAINED" HTML comment marker pairs. See CLAUDE.md "Documentation maintenance"
+for the trigger table and procedure.
 -->
