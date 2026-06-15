@@ -21,7 +21,7 @@ Python 3.11+ · `uv` · `ruff` · `pyright` strict · `pytest` · OpenTofu 1.8+ 
 ## Repo layout
 
 ```
-CLAUDE.md  README.md  ARCHITECTURE.md  ROADMAP.md  SETUP.md  pyproject.toml  .env.example
+CLAUDE.md  README.md  ARCHITECTURE.md  ROADMAP.md  SETUP.md  LICENSE  pyproject.toml  .env.example
 docs/        curation list, data-source manifest
 infra/       OpenTofu modules
 pipelines/   Dagster project; package `atlas/` (assets/ingest, assets/transform, assets/ml, resources, tests)
