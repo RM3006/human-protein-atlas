@@ -130,6 +130,7 @@ See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_sourc
 ├── ARCHITECTURE.md                          # technical design + decisions
 ├── ROADMAP.md                               # 9-part build plan
 ├── SETUP.md                                 # prerequisites and account setup
+├── LICENSE                                  # MIT (code)
 ├── docs/
 │   ├── protein_atlas_curation_list.md       # 100 hand-curated proteins
 │   └── protein_atlas_data_source_manifest.md  # data sources, fields, joins, schema
@@ -181,7 +182,7 @@ uv run dagster dev -m atlas.definitions
 |---|---|
 | [CLAUDE.md](./CLAUDE.md) | rules of engagement for Claude Code sessions |
 | [ROADMAP.md](./ROADMAP.md) | 9-part build plan with effort estimates |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | technical design and decisions (written in Part 9) |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | technical design and decisions |
 | [SETUP.md](./SETUP.md) | prerequisites and account configuration |
 | [docs/protein_atlas_curation_list.md](./docs/protein_atlas_curation_list.md) | the 100 hand-curated proteins |
 | [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_source_manifest.md) | data sources, fields, joins, schema |
@@ -219,7 +220,7 @@ Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 9 sequential part
 
 ## License
 
-Code: MIT.
+Code: [MIT](./LICENSE).
 
 Data attribution to UniProt, STRING-DB, Human Protein Atlas, Open Targets, and ChEMBL under their respective licenses (see Data sources above).
 
@@ -228,7 +229,7 @@ Data attribution to UniProt, STRING-DB, Human Protein Atlas, Open Targets, and C
 <!--
 This README is a CLAUDE-MAINTAINED file. Any change affecting scope, tech stack,
 architecture, data sources, or project status must update the corresponding section
-above. Auto-maintained sections are marked with <!-- MAINTAINED: section_name -->
-and <!-- /MAINTAINED --> comments. See CLAUDE.md "Documentation maintenance" for the
-trigger table and procedure.
+above. Auto-maintained sections are wrapped in "MAINTAINED: section_name" /
+"/MAINTAINED" HTML comment marker pairs. See CLAUDE.md "Documentation maintenance"
+for the trigger table and procedure.
 -->

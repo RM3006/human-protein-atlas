@@ -889,3 +889,33 @@ view, re-derive it from `fact_protein_aa_composition` + `seed_amino_acids`
 git history without re-validating against real data first.
 `render.CATEGORY_COLORS`/`CATEGORY_LABEL`/`category_color`/`category_breakdown`
 are the reusable pieces for any future per-protein chemistry summary.
+
+---
+
+## Hero screenshot dropped from Part 9 — live demo link is the visual entry point (2026-06-15)
+
+### Decision
+
+`ROADMAP.md` Part 9's "take and lightly edit a hero screenshot for the README"
+task and deliverable are dropped (moved to a "Dropped" note in Part 9, pointing
+back here). The README's "Live demo" link (top badge line + hero blockquote,
+both in the `<!-- MAINTAINED: links -->` / `<!-- MAINTAINED: hero -->` sections)
+stays as the primary visual entry point — no static image is added.
+
+### Why
+
+The dashboard is a live, actively-evolving Streamlit app at a stable URL, and
+(post Part 9 keep-alive cronjob) has low cold-start friction. A static
+screenshot is a maintenance liability: every UI change (Part 8's amino acid tab
+being the most recent example) risks a stale image misrepresenting the app —
+the classic "README full of year-old UI" smell. User's framing: "isn't the
+direct dashboard link enough? ... adding a stale png image is maintenance
+heavy."
+
+### How to apply
+
+Don't add a README hero image without also committing to keep it in sync on
+every UI-affecting change. If a future part wants a visual preview for
+contexts where the live link doesn't work well (e.g. an offline PDF export of
+the README), regenerate the screenshot at that time rather than resurrecting
+this dropped task.

@@ -150,6 +150,28 @@ Tools installed on the development machine. One-time install.
      scoped to what the UI imports), not the repo-root `pyproject.toml`.
 - **Secrets**: configured in the Streamlit Cloud UI, not in `.env.local`. `MOTHERDUCK_TOKEN`, `QDRANT_URL`, `QDRANT_API_KEY`, and any UI tokens are added there.
 
+### F2. cron-job.org — keep the app awake
+- **Why**: Streamlit Community Cloud sleeps an app after ~7 consecutive days with no
+  traffic. Once asleep, visitors get a "wake this app up?" interstitial instead of the
+  app — a poor first impression for a public portfolio link. A scheduled ping keeps
+  traffic flowing so it never sleeps. UptimeRobot's free tier is fixed at a 5-minute
+  interval with no custom schedule, which is far more frequent than needed; cron-job.org's
+  free tier allows an arbitrary interval (minute to yearly).
+- **Used in**: Part 9 (public deploy must stay reachable without manual reboots).
+- **Cost**: free.
+- **Steps**:
+  1. Create a free account at cron-job.org.
+  2. Add a new cronjob pointed at the app's health endpoint:
+     `https://<your-app>.streamlit.app/healthz` (returns `{"status":"ok"}` with HTTP 200).
+     Use `/healthz`, **not** the base URL or `/_stcore/health` — on Community Cloud those
+     redirect into the share.streamlit.io auth layer (303 / redirect loop) and never return
+     a clean 200. `/healthz` is served directly by the app container and bypasses auth.
+  3. Set the schedule via a custom cron expression to run twice a week, **Tuesday and
+     Friday at 04:00 UTC** (`0 4 * * 2,5`). Max gap between pings is 4 days (Fri→Tue),
+     comfortably inside Streamlit's ~7-day sleep threshold — a single missed ping still
+     leaves margin before the next one. If the app is ever found asleep, add a third
+     day to the schedule rather than debugging the cron job first.
+
 ---
 
 ## Public data sources — no accounts required

@@ -41,7 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from apps.ui import data, render, tour  # noqa: E402
 
-DEFAULT_ACCESSION = "P01308"  # insulin
+DEFAULT_ACCESSION = "P02452"  # collagen alpha-1(I) chain (COL1A1)
 
 st.set_page_config(page_title="Protein Atlas", page_icon="🧬", layout="wide")
 

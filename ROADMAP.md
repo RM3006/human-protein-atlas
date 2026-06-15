@@ -280,18 +280,28 @@ Before building:
 **Goal**: ship publicly with documentation a senior reviewer respects.
 
 **Deliverables**
-- `README.md` with project description, hero screenshot, Mermaid architecture diagram, live URL, "how it works" section, tech stack table, license.
+- `README.md` with project description, Mermaid architecture diagram, live URL, "how it works" section, tech stack table, license.
 - `ARCHITECTURE.md` fully written: section per layer with "used / considered / why."
 - Public Streamlit URL stable for ≥48 hours under demo load.
+- A cron-job.org cronjob pinging the app's `/healthz` endpoint every Tuesday and Friday
+  at 04:00 UTC so Community Cloud never sleeps the app (it sleeps after ~7 days of no
+  traffic), keeping the public link reachable without manual reboots. See SETUP.md Phase F2.
 - Showcase card on personal portfolio linking to live URL and GitHub.
 - ~300-word LinkedIn or Twitter writeup with a screenshot.
 
 **Tasks**
 1. Write `README.md` with the Mermaid diagram.
 2. Write `ARCHITECTURE.md` layer by layer.
-3. Take and lightly edit the hero screenshot.
+3. Set up the cron-job.org cronjob on `/healthz` (SETUP.md Phase F2) so the public link never sleeps.
 4. Add showcase card to portfolio.
 5. Publish the LinkedIn post.
+
+**Dropped**
+- README hero screenshot — for a live, actively-evolving demo with a stable URL and
+  (post keep-alive) low cold-start friction, a static image is a maintenance liability:
+  every UI change risks a stale screenshot misrepresenting the app, the classic
+  "README full of year-old UI" smell. The prominent live-demo link is the primary
+  visual entry point instead. See `MEMORY.md` ("hero screenshot dropped from Part 9").
 
 **Exit criteria**
 - Live URL works on a fresh incognito browser.
