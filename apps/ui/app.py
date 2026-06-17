@@ -25,6 +25,7 @@ Credentials come from st.secrets (.streamlit/secrets.toml) or environment variab
 MOTHERDUCK_TOKEN, QDRANT_URL, QDRANT_API_KEY.
 """
 
+import html
 import os
 import sys
 from pathlib import Path
@@ -44,6 +45,17 @@ from apps.ui import data, render, tour  # noqa: E402
 DEFAULT_ACCESSION = "P02452"  # collagen alpha-1(I) chain (COL1A1)
 
 st.set_page_config(page_title="Protein Atlas", page_icon="🧬", layout="wide")
+
+
+def _h(v: str) -> str:
+    """Escape a database string for insertion into an HTML block.
+
+    Normalises any existing HTML entities first so pre-encoded values like
+    '&amp;' are not double-encoded to '&amp;amp;'. After normalisation,
+    html.escape produces one clean layer: '&'->'&amp;' (renders as '&'),
+    '<'->'&lt;', '>'->'&gt;'.
+    """
+    return html.escape(html.unescape(v))
 
 
 def _secret(name: str) -> str:
@@ -349,7 +361,7 @@ def _kv_row(label: str, value: str) -> str:
     return (
         "<div style='display:flex;gap:14px;margin-bottom:8px;'>"
         f"<span style='color:#888888;font-size:0.85rem;min-width:130px;'>{label}</span>"
-        f"<span style='color:#111111;font-size:0.92rem;'>{value}</span></div>"
+        f"<span style='color:#111111;font-size:0.92rem;'>{_h(value)}</span></div>"
     )
 
 
@@ -400,8 +412,8 @@ def _handle_point_click(event: Any, selected: str) -> None:
 
 def render_identity(card: dict[str, Any]) -> None:
     """Condensed hero: name, tagline, family tag, technical metadata, plain-English description."""
-    gene = card.get("gene_symbol") or ""
-    name = card["protein_name"] or card["uniprot_accession"]
+    gene = _h(card.get("gene_symbol") or "")
+    name = _h(card["protein_name"] or card["uniprot_accession"])
     eyebrow = (
         f"<div style='font-family:{DISPLAY_FONT};text-transform:uppercase;letter-spacing:0.12em;"
         f"font-size:32px;color:{render.PROTEIN_COLOR};font-weight:bold;'>{gene}</div>"
@@ -409,13 +421,14 @@ def render_identity(card: dict[str, Any]) -> None:
         else ""
     )
     tagline_html = (
-        f"<div style='font-size:1.08rem;color:#111111;margin:2px 0 10px;'>{card['tagline']}</div>"
+        "<div style='font-size:1.08rem;color:#111111;margin:2px 0 10px;'>"
+        f"{_h(card['tagline'])}</div>"
         if card.get("tagline")
         else ""
     )
-    meta_parts = [card["uniprot_accession"]]
+    meta_parts = [_h(card["uniprot_accession"])]
     if card.get("pfam_id"):
-        meta_parts.append(card["pfam_id"])
+        meta_parts.append(_h(card["pfam_id"]))
     if card.get("sequence_length"):
         meta_parts.append(f"{card['sequence_length']} aa")
     family = card.get("family_group")
@@ -423,7 +436,7 @@ def render_identity(card: dict[str, Any]) -> None:
         "<span style='display:inline-block;background:#333333;color:#ffffff;"
         "padding:3px 11px;border-radius:20px;font-size:0.72rem;font-weight:600;"
         "text-transform:uppercase;letter-spacing:0.04em;'>"
-        f"{family}</span>"
+        f"{_h(family)}</span>"
         if family
         else ""
     )
@@ -431,7 +444,7 @@ def render_identity(card: dict[str, Any]) -> None:
         "<span style='display:inline-block;border:1px solid #888888;color:#888888;"
         "padding:3px 11px;border-radius:20px;font-size:0.72rem;font-weight:600;"
         "text-transform:uppercase;letter-spacing:0.04em;'>"
-        f"{loc}</span>"
+        f"{_h(loc)}</span>"
         for loc in render.chips(card.get("subcellular_location"))
     )
     st.markdown(
@@ -445,7 +458,7 @@ def render_identity(card: dict[str, Any]) -> None:
         f"{' · '.join(meta_parts)}</span>{pill}{location_pills}</div>"
         "<div style='border-top:1px solid #e6e6e6;margin:16px 0 14px;'></div>"
         "<div style='font-size:0.98rem;color:#111111;line-height:1.6;'>"
-        f"{card['function_friendly']}</div>"
+        f"{_h(card['function_friendly'])}</div>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -1024,7 +1037,7 @@ def render_diseases(card: dict[str, Any], threshold: float) -> None:
             "<div style='margin-bottom:13px;'>"
             "<div style='display:flex;justify-content:space-between;"
             "font-size:0.92rem;color:#111111;'>"
-            f"<span>{disease['disease_name']}</span>"
+            f"<span>{_h(disease['disease_name'])}</span>"
             f"<span style='color:#888888;'>evidence {pct}%</span></div>"
             "<div style='background:#e6e6e6;height:6px;border-radius:3px;margin-top:4px;'>"
             f"<div style='background:{render.DISEASE_COLOR};height:6px;width:{pct}%;"
@@ -1039,14 +1052,14 @@ def render_drugs(card: dict[str, Any]) -> None:
     if not drugs:
         st.markdown(
             "<div class='card' style='color:#888888;font-size:0.95rem;'>"
-            f"{render.drugs_empty_message(card.get('gene_symbol'))}</div>",
+            f"{_h(render.drugs_empty_message(card.get('gene_symbol')))}</div>",
             unsafe_allow_html=True,
         )
         st.caption(render.DRUGS_HELP_CAPTION)
         return
     pills = ""
     for drug in drugs:
-        nm = drug["drug_name"] or drug["chembl_id"]
+        nm = _h(drug["drug_name"] or drug["chembl_id"])
         phase = render.phase_label(drug["max_phase"])
         pills += (
             "<span style='display:inline-block;background:#ffffff;"
@@ -1092,12 +1105,12 @@ def _render_category_rollup(composition: list[dict[str, Any]]) -> None:
     breakdown = render.category_breakdown(composition)
     segments = "".join(
         f"<div style='width:{pct:.2f}%;background:{render.category_color(cat)};'"
-        f" title='{render.CATEGORY_LABEL.get(cat, cat)} {pct:.1f}%'></div>"
+        f" title='{_h(render.CATEGORY_LABEL.get(cat, cat))} {pct:.1f}%'></div>"
         for cat, pct in breakdown
     )
     legend = " &nbsp;·&nbsp; ".join(
         f"<span style='color:{render.category_color(cat)};'>■</span> "
-        f"{render.CATEGORY_LABEL.get(cat, cat)} {pct:.0f}%"
+        f"{_h(render.CATEGORY_LABEL.get(cat, cat))} {pct:.0f}%"
         for cat, pct in breakdown
     )
     st.markdown(
@@ -1124,7 +1137,7 @@ def _render_composition_row(entry: dict[str, Any], max_pct: float) -> None:
                 else ""
             )
             st.markdown(
-                f"{entry['name']} ({entry['three_letter_code']}){marker}",
+                f"{_h(entry['name'])} ({_h(entry['three_letter_code'])}){marker}",
                 unsafe_allow_html=True,
             )
     with col_bar:
@@ -1150,7 +1163,7 @@ def render_composition_tab(card: dict[str, Any], accession: str) -> None:
         return
     st.markdown(
         "<div class='card' style='font-family:monospace;font-size:0.82rem;"
-        f"color:#111111;line-height:1.6;word-break:break-all;'>{sequence}</div>",
+        f"color:#111111;line-height:1.6;word-break:break-all;'>{_h(sequence)}</div>",
         unsafe_allow_html=True,
     )
 
