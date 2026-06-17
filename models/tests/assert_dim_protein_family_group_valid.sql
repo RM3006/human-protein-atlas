@@ -1,3 +1,4 @@
+{{ config(tags=['real_data']) }}
 -- family_group is the atlas map color dimension, derived in dim_protein by joining
 -- exploded HPA protein_class tokens to the family_group_map seed and taking the
 -- lowest-priority match (COALESCE to 'Unclassified' otherwise). Two invariants:

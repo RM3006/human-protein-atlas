@@ -16,6 +16,8 @@ clean-targets:
   - "dbt_packages"
 
 vars:
+  # CI overrides this to "models/fixtures/bronze"; prod default keeps the real R2 root.
+  source_root: "r2://atlas-raw"
   r2_bucket: "atlas-raw"
   uniprot_version: "2026_01"
   hpa_version: "v24"

@@ -11,6 +11,6 @@ SELECT
     subcellular_location,
     disease_involvement
 FROM read_parquet(
-    'r2://{{ var("r2_bucket") }}/hpa/{{ var("hpa_version") }}/hpa_proteome.parquet'
+    '{{ var("source_root") }}/hpa/{{ var("hpa_version") }}/hpa_proteome.parquet'
 )
 WHERE uniprot_accession IS NOT NULL

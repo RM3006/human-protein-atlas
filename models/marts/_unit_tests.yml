@@ -1,6 +1,57 @@
 version: 2
 
 unit_tests:
+  - name: test_fact_interaction_dedup
+    description: >
+      fact_interaction must collapse symmetric STRING pairs (A-B and B-A) into one
+      canonical row with LEAST/GREATEST ordering and MAX(combined_score), and must
+      drop self-loops (A-A). Three input rows produce exactly one output row.
+    model: fact_interaction
+    given:
+      - input: ref('stg_string')
+        rows:
+          # symmetric pair — both directions present, different scores
+          - {uniprot_a: "P01308", uniprot_b: "P06213", combined_score: 800}
+          - {uniprot_a: "P06213", uniprot_b: "P01308", combined_score: 900}
+          # self-loop — must be dropped
+          - {uniprot_a: "P01308", uniprot_b: "P01308", combined_score: 750}
+      - input: ref('dim_protein')
+        rows:
+          - {uniprot_accession: "P01308"}
+          - {uniprot_accession: "P06213"}
+    expect:
+      rows:
+        # P01308 < P06213 alphabetically → canonical order; MAX score wins
+        - {uniprot_a: "P01308", uniprot_b: "P06213", combined_score: 900}
+
+  - name: test_fact_protein_disease_floor
+    description: >
+      fact_protein_disease applies a HAVING MAX(overall_score) >= 0.1 floor to drop
+      low-evidence associations. A score of 0.09 must be excluded; 0.10 and 0.50
+      must be included.
+    model: fact_protein_disease
+    given:
+      - input: ref('stg_ot_associations')
+        rows:
+          - {ensembl_gene_id: "ENS1", efo_id: "EFO_001", overall_score: 0.09}
+          - {ensembl_gene_id: "ENS1", efo_id: "EFO_002", overall_score: 0.10}
+          - {ensembl_gene_id: "ENS1", efo_id: "EFO_003", overall_score: 0.50}
+      - input: ref('stg_ot_targets')
+        rows:
+          - {ensembl_gene_id: "ENS1", uniprot_accession: "P01308"}
+      - input: ref('dim_protein')
+        rows:
+          - {uniprot_accession: "P01308"}
+      - input: ref('dim_disease')
+        rows:
+          - {efo_id: "EFO_001"}
+          - {efo_id: "EFO_002"}
+          - {efo_id: "EFO_003"}
+    expect:
+      rows:
+        - {uniprot_accession: "P01308", efo_id: "EFO_002", overall_score: 0.10}
+        - {uniprot_accession: "P01308", efo_id: "EFO_003", overall_score: 0.50}
+
   - name: test_aa_composition_hand_counted
     description: >
       Hand-counted fixture for fact_protein_aa_composition. Sequence 'ACDACA'

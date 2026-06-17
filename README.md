@@ -15,18 +15,9 @@
 
 ## What this is
 
-A multi-source human protein atlas built on a serverless data platform. Every reviewed human protein in UniProt (~20,000 entries) is embedded by Meta's ESM-2 language model, projected to a 2D map, and joined with interactions, tissue data, diseases, and drugs from four other public databases. The result is served through a Streamlit UI that queries the warehouse and vector index directly — no separate API tier.
+A multi-source human protein atlas built on a serverless data platform. Every reviewed human protein in UniProt (~20,000 entries) is embedded by Meta's ESM-2 language model, projected to a 2D map, and joined with interactions, tissue data, diseases, and drugs from four other public databases. The result is served through a Streamlit UI that queries the warehouse and vector index directly — no separate API tier. Story cards are written in plain English: hand-written narratives for the 100 most culturally important proteins, LLM-generated descriptions for the long tail, identical UI for both.
 
-The same infrastructure that produces the visualization — clusters of kinases, receptors, and transporters in distinct regions of the map — also powers protein-by-protein "story cards" written in plain English: hand-written narratives for the 100 most culturally important proteins, LLM-generated descriptions for the long tail, identical UI for both.
-
-## Why this project exists
-
-The atlas demonstrates end-to-end data engineering on a substantive domain. A reviewer scrolling the project sees:
-
-- **Real multi-source integration**: five public biology databases joined on a single anchor identifier with explicit license tracking and refresh cadences.
-- **Modern stack**: serverless GPU inference (Modal), serverless warehouse (MotherDuck), vector database (Qdrant), Infrastructure-as-Code (OpenTofu), asset-based orchestration (Dagster), star-schema modeling (dbt).
-- **Production discipline**: idempotent assets, typed Python, CI, no hardcoded secrets, no CSV in pipelines, schema tests on every join.
-- **Editorial product sense**: the same UI that demos to a scientist also teaches a curious 12-year-old; the difference between them is a curated-vs-LLM-generated content tier, not a data tier.
+The project demonstrates end-to-end data engineering on a substantive domain: five public biology databases joined on a single anchor identifier, typed Python with strict CI, idempotent assets, no hardcoded secrets, schema tests on every join, and an editorial content tier invisible to the reader.
 
 ## What it does
 
@@ -177,35 +168,10 @@ uv run dagster asset materialize --select uniprot_human_reviewed_raw -m atlas.de
 uv run dagster dev -m atlas.definitions
 ```
 
-## Documentation
-
-| File | Purpose |
-|---|---|
-| [CLAUDE.md](./CLAUDE.md) | rules of engagement for Claude Code sessions |
-| [ROADMAP.md](./ROADMAP.md) | 9-part build plan with effort estimates |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | technical design and decisions |
-| [SETUP.md](./SETUP.md) | prerequisites and account configuration |
-| [docs/protein_atlas_curation_list.md](./docs/protein_atlas_curation_list.md) | the 100 hand-curated proteins |
-| [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_source_manifest.md) | data sources, fields, joins, schema |
-
 ## Status
 
 <!-- MAINTAINED: status -->
-**Current status**: Part 9 complete — v1 is shipped and fully documented. The
-[live demo](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/)
-opens on collagen (COL1A1) with a guided 90-second tour and "reading this
-chart" insight cards, and every surface has human-readable empty/loading/error
-states. Search any protein to see its story card, STRING interactome,
-ESM-2/UMAP sequence neighborhood, clinical profile, and amino acid
-composition; cross-references are clickable, following the ligand → receptor
-→ drug navigation path (insulin → INSR, where the insulin therapies live). The
-UI queries MotherDuck and Qdrant directly — no API tier. The underlying data
-layer (Part 5) holds 20,431 proteins in `dim_protein`: 100 with hand-authored
-narratives, 17,073 with Claude Haiku rewrites, and 3,258 showing "No
-information available" where UniProt has no annotation. A cron-job.org health
-check pings `/healthz` twice weekly so the public app never sleeps.
-
-Progress is tracked in [ROADMAP.md](./ROADMAP.md). The plan is 9 sequential parts:
+**v1 complete** — [live demo](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/) · 20,431 proteins · 100 hand-authored narratives · 17,073 LLM rewrites.
 
 - [x] Part 1 — Foundation + UniProt ingest
 - [x] Part 2 — Remaining data sources

@@ -5,6 +5,12 @@ This document explains **how** the atlas is built and **why** it's built that wa
 [ROADMAP.md](./ROADMAP.md); for the rationale behind individual decisions (including ones
 later reversed), see `MEMORY.md`.
 
+> **On stack size**: this dataset is laptop-sized (~20k proteins, sub-million-row facts).
+> The multi-cloud stack — Modal, MotherDuck, Qdrant, R2, Dagster, dbt — was chosen as a
+> deliberate learning exercise across those tools, not because the data demands them. At
+> this scale, local DuckDB + brute-force ANN + a single Parquet file could serve the same
+> product. The stack choices are intentional; they are not accidental over-engineering.
+
 ---
 
 ## 1. System topology — end-to-end data lifecycle
@@ -68,8 +74,7 @@ custom DAG-wiring beyond Dagster's automatic dependency inference from asset I/O
 | `pipelines/atlas/assets/llm/` | `rewrites.py` — Anthropic Batch API submission/polling for the `function_friendly` rewrites (Part 5). |
 | `pipelines/atlas/resources/r2.py` | `R2Resource` — the single boto3 S3 client wrapper every ingest/ML asset goes through to read/write Bronze Parquet (CLAUDE.md rule 3). |
 | `pipelines/atlas/definitions.py` | Dagster code location: wires the three asset packages + `R2Resource`, loads `.env.local`. |
-| `models/sources.yml` | External-table declarations over Bronze Parquet in R2 (`read_parquet('r2://...')`). |
-| `models/staging/` | 8 views, one per Bronze source (`stg_uniprot`, `stg_string`, `stg_hpa`, `stg_ot_targets`, `stg_ot_diseases`, `stg_ot_associations`, `stg_ot_drugs`, `stg_ot_drug_molecules`, `stg_llm_rewrites`) — picks canonical scalars out of source-native arrays/structs, no business logic yet. |
+| `models/staging/` | 9 views, one per Bronze source (`stg_uniprot`, `stg_string`, `stg_hpa`, `stg_ot_targets`, `stg_ot_diseases`, `stg_ot_associations`, `stg_ot_drugs`, `stg_ot_drug_molecules`, `stg_llm_rewrites`) — each reads via `read_parquet('{{ var("source_root") }}/...')`. `source_root` defaults to `r2://atlas-raw` in prod; CI overrides it to `models/fixtures/bronze` (empty-schema stubs) so the full DAG builds without credentials. |
 | `models/marts/` | The Gold star schema: `dim_protein`, `dim_disease`, `dim_drug`, `fact_protein_tissue`, `fact_interaction`, `fact_protein_disease`, `fact_drug_target_disease`, `fact_protein_aa_composition`. All cross-mart joins use `uniprot_accession`. |
 | `models/seeds/` | `seed_amino_acids.csv` (20-row amino-acid glossary, joined into `fact_protein_aa_composition` on `amino_acid_code` — a lookup key, distinct from the cross-database `uniprot_accession` join), `dim_protein_editorial.csv` (the 100 hand-curated narratives), `family_group_map.csv` (protein-family grouping used to color the UMAP atlas). |
 | `models/queries/protein_story_card.sql` | The canonical story-card shape — one row per protein with `LIST(STRUCT(...))` columns for interaction partners, diseases, and drugs. `apps/ui/data.py`'s `STORY_CARD_SQL` is a hand-port of this. |
@@ -140,5 +145,5 @@ custom DAG-wiring beyond Dagster's automatic dependency inference from asset I/O
 - **Modal**: A10G GPU, `max_containers=5`, `timeout=3600`s, batches of 128 sequences in fp16 — roughly 160 calls / 32 serial rounds for the full 20,431-protein set. Total spend budget for Part 4 was <$10; re-embedding only happens on a new UniProt release or model-version bump, not on a schedule.
 - **ESM-2 context window**: 1022-residue cap (1024-token context minus `<cls>`/`<eos>`); 2,302 of 20,431 proteins are truncated. `was_truncated` is stored but does not exclude a protein from embedding or display.
 - **Qdrant**: single `proteins` collection, 20,431 points × 1280-dim float32 (~105 MB), cosine distance. Recreated wholesale on each embeddings run — no incremental upsert path exists, so a partial re-embed isn't currently possible without a full rebuild.
-- **Streamlit Community Cloud**: single instance, no horizontal scaling, no auth. Sleeps after ~7 days with zero traffic — mitigated by an external cron-job.org ping to `/healthz` (Tuesday and Friday, 04:00 UTC; see `SETUP.md` Phase F2). `apps/ui/requirements.txt` must be manually kept in sync with `pyproject.toml`'s version constraints for the 4 packages it lists.
+- **Streamlit Community Cloud**: single instance, no horizontal scaling, no auth. Sleeps after ~7 days with no browser sessions — plain HTTP pings do not count; Streamlit tracks WebSocket connections. Mitigated by `.github/workflows/keep-app-alive.yml`, which loads the full app URL in headless Chromium (Playwright) every 10 hours, establishing the WebSocket session that resets the sleep timer. A separate workflow (`.github/workflows/repo-heartbeat.yml`) runs daily, checks days elapsed since the last commit via `git log`, and pushes one empty commit only when that count reaches 59 — preventing GitHub from disabling scheduled workflows after 60 days of no push activity, without hardcoded dates. `apps/ui/requirements.txt` must be manually kept in sync with `pyproject.toml`'s version constraints for the 4 packages it lists.
 - **CI gate**: `ruff`, `pyright --strict`, and `pytest` (100 tests across `pipelines/atlas`, `apps/ui`, and dbt) must all pass before merge. Every Dagster asset, dbt model, and Qdrant write is idempotent — safe to rerun without manual cleanup (CLAUDE.md rule 4).

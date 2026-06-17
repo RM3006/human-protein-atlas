@@ -8,5 +8,5 @@ SELECT
     function_friendly,
     tagline
 FROM read_parquet(
-    'r2://{{ var("r2_bucket") }}/llm/v{{ var("llm_version") }}/protein_rewrites.parquet'
+    '{{ var("source_root") }}/llm/v{{ var("llm_version") }}/protein_rewrites.parquet'
 )
