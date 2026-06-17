@@ -1,0 +1,29 @@
+name: Repo heartbeat
+
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/heartbeat
+          fetch-depth: 0
+
+      - name: Write timestamp
+        run: echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .github/heartbeat
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/heartbeat
+          git commit -m "heartbeat: $(date -u +%Y-%m)"
+          git push
