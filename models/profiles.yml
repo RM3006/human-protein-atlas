@@ -13,3 +13,8 @@ atlas:
       threads: 4
       extensions:
         - httpfs
+    ci:
+      type: duckdb
+      path: ":memory:"
+      schema: main
+      threads: 4

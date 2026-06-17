@@ -1,3 +1,4 @@
+{{ config(tags=['real_data']) }}
 -- dim_protein is sourced from a single UniProt Swiss-Prot human-reviewed export
 -- (currently 20,431 rows) that grows by low hundreds per release. A row count
 -- far below that signals a broken ingest (wrong species filter, truncated
