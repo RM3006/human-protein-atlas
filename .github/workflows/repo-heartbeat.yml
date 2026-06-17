@@ -2,7 +2,7 @@ name: Repo heartbeat
 
 on:
   schedule:
-    - cron: "0 0 1 * *"
+    - cron: "0 */8 * * *"
   workflow_dispatch:
 
 permissions:
@@ -14,16 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: chore/heartbeat
-          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Write timestamp
-        run: echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .github/heartbeat
-
-      - name: Commit and push
+      - name: Push empty commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/heartbeat
-          git commit -m "heartbeat: $(date -u +%Y-%m)"
+          git commit --allow-empty -m "heartbeat: keep-alive $(date -u +%Y-%m-%dT%H:%M:%SZ) [skip ci]"
           git push
