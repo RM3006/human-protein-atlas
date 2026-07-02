@@ -57,9 +57,7 @@ def test_similarity_is_cosine_not_euclidean() -> None:
 
 def test_returns_expected_columns_and_row_count() -> None:
     accessions = ["A", "B", "C", "D"]
-    embeddings = np.array(
-        [_row([1.0, 0.0]), _row([0.0, 1.0]), _row([1.0, 1.0]), _row([-1.0, 0.0])]
-    )
+    embeddings = np.array([_row([1.0, 0.0]), _row([0.0, 1.0]), _row([1.0, 1.0]), _row([-1.0, 0.0])])
     df = top_k_neighbors(accessions, embeddings, k=2)
 
     assert set(df.columns) == {"uniprot_accession", "neighbor_accession", "similarity", "rank"}

@@ -91,9 +91,7 @@ def protein_neighbors(context: AssetExecutionContext) -> MaterializeResult[Any]:
     accessions: list[str] = [r[0] for r in rows]
     embeddings = np.array([r[1] for r in rows], dtype=np.float32)
 
-    context.log.info(
-        "Computing top-%d neighbors for %d proteins …", NEIGHBOR_K, len(accessions)
-    )
+    context.log.info("Computing top-%d neighbors for %d proteins …", NEIGHBOR_K, len(accessions))
     df = top_k_neighbors(accessions, embeddings, k=NEIGHBOR_K)
     context.log.info("Computed %d neighbor rows", df.height)
 
