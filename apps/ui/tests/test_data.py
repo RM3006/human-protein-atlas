@@ -4,8 +4,6 @@ Centred on the ligand -> receptor -> drug navigation rule: insulin has partners 
 drug; its receptor INSR carries the drug.
 """
 
-from typing import Any
-
 import duckdb
 
 from apps.ui import data
@@ -77,48 +75,20 @@ def test_fetch_sequence_lengths(conn: duckdb.DuckDBPyConnection) -> None:
     assert data.fetch_sequence_lengths(conn, []) == {}
 
 
-def test_accession_to_id_stable_and_positive() -> None:
-    value = data.accession_to_id("P01308")
-    assert value == data.accession_to_id("P01308")
-    assert 0 < value < 2**63
-
-
-class _FakePoint:
-    def __init__(self, payload: dict[str, str], score: float, vector: list[float]) -> None:
-        self.payload = payload
-        self.score = score
-        self.vector = vector
-
-
-class _FakeQueryResponse:
-    def __init__(self, points: list[_FakePoint]) -> None:
-        self.points = points
-
-
-class _FakeQdrantClient:
-    """Minimal Qdrant stand-in exercising data.find_neighbors end to end."""
-
-    def retrieve(
-        self, collection_name: str, ids: list[int], with_vectors: bool
-    ) -> list[_FakePoint]:
-        return [_FakePoint({"uniprot_accession": "P01308"}, 1.0, [0.1, 0.2])]
-
-    def query_points(
-        self, collection_name: str, query: object, limit: int, with_payload: bool
-    ) -> _FakeQueryResponse:
-        return _FakeQueryResponse(
-            [
-                _FakePoint({"uniprot_accession": "P01308", "gene_symbol": "INS"}, 1.0, []),
-                _FakePoint({"uniprot_accession": "P06213", "gene_symbol": "INSR"}, 0.96, []),
-            ]
-        )
-
-
-def test_find_neighbors_drops_self_and_rounds_score() -> None:
-    client: Any = _FakeQdrantClient()
-    hits = data.find_neighbors(client, "P01308", k=10)
-    assert [h["accession"] for h in hits] == ["P06213"]  # self (P01308) dropped
+def test_find_neighbors_returns_ranked_hits(conn: duckdb.DuckDBPyConnection) -> None:
+    hits = data.find_neighbors(conn, "P01308", k=10)
+    assert [h["accession"] for h in hits] == ["P06213", "P08069"]  # ordered by rank
+    assert hits[0]["gene_symbol"] == "INSR"
     assert hits[0]["similarity"] == 0.96
+
+
+def test_find_neighbors_respects_k(conn: duckdb.DuckDBPyConnection) -> None:
+    hits = data.find_neighbors(conn, "P01308", k=1)
+    assert [h["accession"] for h in hits] == ["P06213"]
+
+
+def test_find_neighbors_unknown_accession_is_empty(conn: duckdb.DuckDBPyConnection) -> None:
+    assert data.find_neighbors(conn, "X99999", k=10) == []
 
 
 _STANDARD_AA_CODES = set("ARNDCEQGHILKMFPSTWYV")

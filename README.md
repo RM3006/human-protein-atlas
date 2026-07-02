@@ -47,8 +47,7 @@ The project demonstrates end-to-end data engineering on a substantive domain: fi
 | Modeling | `dbt-core` + `dbt-duckdb` |
 | ML compute | Modal (serverless GPU, A10G) |
 | Protein language model | ESM-2 `t33_650M` (Hugging Face) |
-| Vector database | Qdrant Cloud |
-| UI | Streamlit (Community Cloud) — queries MotherDuck + Qdrant directly |
+| UI | Streamlit (Community Cloud) — queries MotherDuck directly |
 | Infrastructure-as-Code | OpenTofu |
 | LLM batch rewrites | Claude Haiku (Anthropic API) |
 <!-- /MAINTAINED -->
@@ -73,7 +72,6 @@ flowchart LR
     end
     subgraph Stores["Modeled stores"]
         MD[(MotherDuck<br/>star schema)]
-        QD[(Qdrant<br/>vector index)]
     end
     subgraph Serve["Serving"]
         UI[Streamlit UI]
@@ -87,9 +85,7 @@ flowchart LR
     R2 --> ESM
     ESM --> UMAP
     UMAP --> MD
-    ESM --> QD
     MD --> UI
-    QD --> UI
 ```
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for design decisions and tradeoffs.
@@ -137,7 +133,7 @@ See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_sourc
 │       └── tests/                           # fixture-based correctness tests
 ├── models/                                  # dbt project (sources, staging, marts)
 ├── apps/
-│   └── ui/                                  # Streamlit; queries MotherDuck + Qdrant directly
+│   └── ui/                                  # Streamlit; queries MotherDuck directly
 ├── notebooks/                               # exploratory
 ├── .github/workflows/ci.yml                 # ruff + pyright + pytest on every PR
 ├── pyproject.toml
@@ -176,7 +172,7 @@ uv run dagster dev -m atlas.definitions
 - [x] Part 1 — Foundation + UniProt ingest
 - [x] Part 2 — Remaining data sources
 - [x] Part 3 — dbt modeling
-- [x] Part 4 — ESM-2 inference + UMAP + Qdrant
+- [x] Part 4 — ESM-2 inference + UMAP + nearest-neighbor index
 - [x] Part 5 — LLM rewrites + curation
 - [x] Part 6 — Streamlit UI vertical slice
 - [x] Part 7 — Polish: tour and design pass

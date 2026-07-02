@@ -15,7 +15,6 @@ from numpy.typing import NDArray
 from atlas.assets.ml.embeddings import (
     EMBEDDING_DIM,
     MODEL_VERSION,
-    accession_to_id,
     build_embedding_df,
     chunk,
 )
@@ -73,25 +72,6 @@ def test_chunk_smaller_than_size_returns_one_chunk() -> None:
 
 def test_chunk_empty_list() -> None:
     assert chunk([], 10) == []
-
-
-# --- accession_to_id ---
-
-
-def test_accession_to_id_is_deterministic() -> None:
-    assert accession_to_id("P00533") == accession_to_id("P00533")
-
-
-def test_accession_to_id_is_positive() -> None:
-    for acc in ["P00533", "P01308", "P04637", "Q9Y463"]:
-        assert accession_to_id(acc) > 0
-
-
-def test_accession_to_id_distinct_accessions_differ() -> None:
-    egfr = accession_to_id("P00533")
-    insulin = accession_to_id("P01308")
-    tp53 = accession_to_id("P04637")
-    assert len({egfr, insulin, tp53}) == 3
 
 
 # --- build_embedding_df ---

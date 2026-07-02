@@ -13,11 +13,11 @@ dependencies = [
     "duckdb==1.5.2",
     "modal>=0.70",
     "umap-learn>=0.5.3",
-    "qdrant-client>=1.9",
     "numpy>=1.26",
     "anthropic>=0.50",
     "streamlit>=1.40",
     "plotly>=5.24",
+    "streamlit-searchbox>=0.1.24",
 ]
 
 [dependency-groups]

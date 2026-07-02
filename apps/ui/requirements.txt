@@ -7,4 +7,4 @@
 streamlit>=1.40
 plotly>=5.24
 duckdb==1.5.2
-qdrant-client>=1.9
+streamlit-searchbox>=0.1.24

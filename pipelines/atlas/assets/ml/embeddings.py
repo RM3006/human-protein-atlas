@@ -1,13 +1,12 @@
-"""Dagster asset: ESM-2 embeddings + UMAP + Qdrant indexing.
+"""Dagster asset: ESM-2 embeddings + UMAP projection.
 
 Reads every protein sequence from MotherDuck dim_protein, batches through
 Modal's GPU inference function, projects embeddings to 2D with UMAP, and
-writes results to two sinks:
-  - MotherDuck atlas.main.fact_embedding (uniprot_accession, embedding[], umap_x/y)
-  - Qdrant Cloud proteins collection (cosine-similarity vector search)
+writes MotherDuck atlas.main.fact_embedding (uniprot_accession, embedding[], umap_x/y).
+The protein_neighbors asset (neighbors.py) reads this table to precompute
+nearest-neighbor lookups for the UI.
 """
 
-import hashlib
 import os
 import tempfile
 from datetime import UTC, datetime
@@ -21,8 +20,6 @@ import polars as pl
 import umap  # pyright: ignore[reportMissingTypeStubs]
 from dagster import AssetExecutionContext, MaterializeResult, MetadataValue, asset
 from numpy.typing import NDArray
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from atlas.logging import logger
 
@@ -32,14 +29,6 @@ MODAL_FN_NAME = "embed_batch"
 EMBEDDING_DIM = 1280
 BATCH_SIZE = 128
 MODEL_VERSION = "esm2_t33_650M"
-QDRANT_COLLECTION = "proteins"
-
-
-def accession_to_id(accession: str) -> int:
-    """Stable, positive uint64 Qdrant point ID derived from UniProt accession."""
-    digest = hashlib.sha256(accession.encode()).digest()
-    # Shift right by 1 to guarantee sign bit is 0 (positive int64 range).
-    return int.from_bytes(digest[:8], "big") >> 1
 
 
 def chunk(items: list[Any], size: int) -> list[list[Any]]:
@@ -73,24 +62,22 @@ def build_embedding_df(
 
 @asset(group_name="ml", compute_kind="modal")
 def protein_embeddings(context: AssetExecutionContext) -> MaterializeResult[Any]:
-    """ESM-2 embeddings, UMAP 2D coords, and Qdrant index for all dim_protein rows.
+    """ESM-2 embeddings and UMAP 2D coords for all dim_protein rows.
 
-    Produces: fact_embedding in MotherDuck atlas.main and proteins collection in Qdrant.
+    Produces: fact_embedding in MotherDuck atlas.main.
     Depends on: dim_protein (MotherDuck), embed_batch Modal GPU function.
-    Lands at: MotherDuck atlas.main.fact_embedding; Qdrant proteins collection.
+    Lands at: MotherDuck atlas.main.fact_embedding.
     """
     token = os.environ["MOTHERDUCK_TOKEN"]
     conn = duckdb.connect(f"md:atlas?motherduck_token={token}")
 
     rows = conn.execute(
-        "SELECT uniprot_accession, gene_symbol, protein_name, sequence "
+        "SELECT uniprot_accession, sequence "
         "FROM dim_protein WHERE sequence IS NOT NULL ORDER BY uniprot_accession"
     ).fetchall()
 
     accessions: list[str] = [r[0] for r in rows]
-    gene_symbols: list[str | None] = [r[1] for r in rows]
-    protein_names: list[str | None] = [r[2] for r in rows]
-    sequences: list[str] = [r[3] for r in rows]
+    sequences: list[str] = [r[1] for r in rows]
 
     context.log.info("Read %d sequences from dim_protein", len(accessions))
 
@@ -152,42 +139,6 @@ def protein_embeddings(context: AssetExecutionContext) -> MaterializeResult[Any]
     finally:
         tmp_parquet.unlink(missing_ok=True)
     context.log.info("Written %d rows to MotherDuck fact_embedding", df.height)
-
-    # --- Upsert to Qdrant ---
-    qdrant = QdrantClient(
-        url=os.environ["QDRANT_URL"],
-        api_key=os.environ["QDRANT_API_KEY"],
-    )
-
-    if qdrant.collection_exists(QDRANT_COLLECTION):
-        qdrant.delete_collection(QDRANT_COLLECTION)
-
-    qdrant.create_collection(
-        collection_name=QDRANT_COLLECTION,
-        vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE),
-    )
-
-    for i in range(0, len(accessions), 1000):
-        batch_slice = slice(i, i + 1000)
-        batch_accs = accessions[batch_slice]
-        batch_embs = embeddings_matrix[batch_slice]
-        points = [
-            PointStruct(
-                id=accession_to_id(acc),
-                vector=emb.tolist(),
-                payload={
-                    "uniprot_accession": acc,
-                    "gene_symbol": gene_symbols[i + j],
-                    "protein_name": protein_names[i + j],
-                },
-            )
-            for j, (acc, emb) in enumerate(zip(batch_accs, batch_embs, strict=True))
-        ]
-        qdrant.upsert(collection_name=QDRANT_COLLECTION, points=points)
-
-    context.log.info(
-        "Upserted %d vectors to Qdrant collection '%s'", len(accessions), QDRANT_COLLECTION
-    )
 
     return MaterializeResult(
         metadata={

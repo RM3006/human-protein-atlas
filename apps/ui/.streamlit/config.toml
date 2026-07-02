@@ -4,8 +4,9 @@
 base = "light"
 primaryColor = "#111111"
 backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f5f5f5"
 textColor = "#111111"
+font = "sans serif"
 
 [client]
 # Hide the developer toolbar (hamburger / "Deploy") for a clean embedded widget.

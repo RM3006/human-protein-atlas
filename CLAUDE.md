@@ -16,7 +16,7 @@ A living atlas of every human protein — what it does, who it talks to, what go
 
 ## Tech stack (fixed — ask before deviating)
 
-Python 3.11+ · `uv` · `ruff` · `pyright` strict · `pytest` · OpenTofu 1.8+ · Dagster OSS · Cloudflare R2 · Parquet · MotherDuck · dbt-core + dbt-duckdb · Modal · ESM-2 `t33_650M` · Qdrant Cloud · Streamlit · `polars` (not pandas) · Claude Haiku for batch rewrites.
+Python 3.11+ · `uv` · `ruff` · `pyright` strict · `pytest` · OpenTofu 1.8+ · Dagster OSS · Cloudflare R2 · Parquet · MotherDuck · dbt-core + dbt-duckdb · Modal · ESM-2 `t33_650M` · Streamlit · `polars` (not pandas) · Claude Haiku for batch rewrites.
 
 ## Repo layout
 
@@ -26,7 +26,7 @@ docs/        curation list, data-source manifest
 infra/       OpenTofu modules
 pipelines/   Dagster project; package `atlas/` (assets/ingest, assets/llm, assets/ml, resources, tests)
 models/      dbt project (sources, staging, marts)
-apps/ui/     Streamlit on Community Cloud; queries MotherDuck + Qdrant directly (no API tier)
+apps/ui/     Streamlit on Community Cloud; queries MotherDuck directly (no API tier)
 notebooks/   exploratory; never imported elsewhere
 ```
 

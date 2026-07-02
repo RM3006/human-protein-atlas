@@ -1,9 +1,9 @@
-"""Data access for the Streamlit app: MotherDuck (DuckDB) queries + Qdrant search.
+"""Data access for the Streamlit app: MotherDuck (DuckDB) queries.
 
-The Streamlit app calls these functions directly (no API tier). Connection objects
-are created by the factory helpers here and cached in app.py via st.cache_resource;
-the query functions take a connection/client so they stay framework-agnostic and
-testable against an in-memory DuckDB loaded with fixtures.
+The Streamlit app calls these functions directly (no API tier). The connection object
+is created by connect_motherduck and cached in app.py via st.cache_resource; the query
+functions take a connection so they stay framework-agnostic and testable against an
+in-memory DuckDB loaded with fixtures.
 
 The story-card statement is a hand-port of models/queries/protein_story_card.sql
 (the canonical spec): dbt `{{ ref('x') }}` -> `x`, `{{ var("accession") }}` -> `?`,
@@ -11,15 +11,11 @@ plus the `family_group` column. Its three LIST(STRUCT) columns come back from Du
 as nested Python lists of dicts.
 """
 
-import hashlib
 import threading
 from decimal import Decimal
-from typing import Any, cast
+from typing import Any
 
 import duckdb
-from qdrant_client import QdrantClient
-
-QDRANT_COLLECTION = "proteins"
 
 # DuckDB connections are not safe for concurrent use, and st.cache_resource shares one
 # connection across all sessions, so serialize the (sub-100ms) queries with a lock.
@@ -31,20 +27,6 @@ _LIST_FIELDS = ("top_interaction_partners", "top_diseases", "approved_drugs")
 def connect_motherduck(token: str) -> duckdb.DuckDBPyConnection:
     """Open a MotherDuck connection to the `atlas` database."""
     return duckdb.connect(f"md:atlas?motherduck_token={token}")
-
-
-def make_qdrant_client(url: str, api_key: str) -> QdrantClient:
-    """Create a Qdrant Cloud client."""
-    return QdrantClient(url=url, api_key=api_key)
-
-
-def accession_to_id(accession: str) -> int:
-    """Stable positive int64 Qdrant point ID from a UniProt accession.
-
-    Mirrors atlas.assets.ml.embeddings.accession_to_id (the IDs were assigned in Part 4).
-    """
-    digest = hashlib.sha256(accession.encode()).digest()
-    return int.from_bytes(digest[:8], "big") >> 1
 
 
 STORY_CARD_SQL = """
@@ -263,8 +245,8 @@ def fetch_sequence_lengths(
 ) -> dict[str, int]:
     """Return {accession: sequence_length} for the given accessions.
 
-    Used for the "Sequence neighborhood" list, whose rows come from the Qdrant
-    payload (no sequence_length there) and need a small batched DuckDB lookup.
+    Used for the "Sequence neighborhood" list, whose rows come from
+    fact_protein_neighbor (no sequence_length there) and need a small batched lookup.
     """
     if not accessions:
         return {}
@@ -278,39 +260,32 @@ def fetch_sequence_lengths(
     return {r[0]: r[1] for r in rows}
 
 
+NEIGHBORS_SQL = """
+SELECT dp.uniprot_accession, dp.gene_symbol, dp.protein_name, n.similarity
+FROM fact_protein_neighbor n
+JOIN dim_protein dp ON dp.uniprot_accession = n.neighbor_accession
+WHERE n.uniprot_accession = ?
+ORDER BY n.rank
+LIMIT ?
+"""
+
+
 def find_neighbors(
-    client: QdrantClient, accession: str, k: int = 10, collection: str = QDRANT_COLLECTION
+    conn: duckdb.DuckDBPyConnection, accession: str, k: int = 10
 ) -> list[dict[str, Any]]:
-    """Return up to k nearest proteins by ESM-2 cosine similarity, excluding self."""
-    point_id = accession_to_id(accession)
-    found = client.retrieve(collection_name=collection, ids=[point_id], with_vectors=True)
-    if not found:
-        return []
-    vector = found[0].vector
-    if vector is None:
-        return []
-    # The `proteins` collection stores a single unnamed vector, so .vector is a plain
-    # list[float] (not the named-vector dict the union type also allows).
-    response = client.query_points(
-        collection_name=collection,
-        query=cast(list[float], vector),
-        limit=k + 1,
-        with_payload=True,
-    )
-    hits: list[dict[str, Any]] = []
-    for point in response.points:
-        payload = point.payload or {}
-        neighbor_accession = payload.get("uniprot_accession")
-        if neighbor_accession is None or neighbor_accession == accession:
-            continue
-        hits.append(
-            {
-                "accession": neighbor_accession,
-                "gene_symbol": payload.get("gene_symbol"),
-                "protein_name": payload.get("protein_name"),
-                "similarity": round(point.score, 3),
-            }
-        )
-        if len(hits) >= k:
-            break
-    return hits
+    """Return up to k nearest proteins by ESM-2 cosine similarity, excluding self.
+
+    Reads the precomputed fact_protein_neighbor table (top-20 per protein, written by
+    the protein_neighbors Dagster asset) instead of a live vector-search call.
+    """
+    with _query_lock:
+        rows = conn.execute(NEIGHBORS_SQL, [accession, k]).fetchall()
+    return [
+        {
+            "accession": r[0],
+            "gene_symbol": r[1],
+            "protein_name": r[2],
+            "similarity": round(r[3], 3),
+        }
+        for r in rows
+    ]

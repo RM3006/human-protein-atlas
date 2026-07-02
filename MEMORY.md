@@ -60,6 +60,10 @@ og:image dropped: Streamlit Community Cloud serves a generic shell HTML that cra
 
 Cross-protein "richest in X" ranking and glossary cards dropped — breaks the "atlas is by protein" principle, and EGFR doesn't rank top-5 for cysteine against the curated set anyway. Per-protein composition tab kept: full sequence + 20 amino acids ranked by `pct_of_sequence` + side-chain-category rollup. `seed_amino_acids` and `fact_protein_aa_composition` dbt layer unchanged.
 
+## CSS `!important` on stVerticalBlockBorderWrapper blocks per-instance overrides
+
+Global CSS that sets `border: ... !important` on `[data-testid="stVerticalBlockBorderWrapper"]` (or on a `.st-key-{key}` rule, see "Container border overrides" above) wins over any per-card override attempted via a CSS variable or a more specific selector — `!important` beats non-`!important` regardless of specificity, and the failure is silent (no error, the color/border just doesn't change). Only matters for cards built with `st.container(border=True, key=...)`; a raw HTML `<div>` injected via `st.markdown(unsafe_allow_html=True)` isn't affected since it never touches that wrapper. If a future card needs a per-instance dynamic border (e.g. a status color), the override must carry matching `!important` on an equal-or-higher-specificity selector, not a plain declaration.
+
 ## Part 9 — Deploy
 
 Hero screenshot dropped — live demo link is the primary visual entry point; a static screenshot goes stale on every UI change. Default landing protein changed from insulin (P01308) to **COL1A1 (P02452)**: insulin has zero drugs under the ligand-routing rule, which reads as a bug on first load; COL1A1 has populated partners, diseases (osteogenesis imperfecta), and drugs.
@@ -67,3 +71,7 @@ Hero screenshot dropped — live demo link is the primary visual entry point; a 
 ## CI dbt gate
 
 `source_root` var added to all staging models (default `r2://atlas-raw`; CI overrides to `models/fixtures/bronze`). Empty Bronze Parquet stubs committed; `dbt build --exclude tag:real_data` runs on every PR against in-memory DuckDB. Unit tests: `test_fact_interaction_dedup` (LEAST/GREATEST + MAX + self-loop drop) and `test_fact_protein_disease_floor` (0.09 excluded, 0.10 included). Two volume/cardinality guards tagged `real_data` — run manually against the live warehouse, not in CI.
+
+## Qdrant dropped for a precomputed fact_protein_neighbor table
+
+Qdrant Cloud's free-tier cluster auto-pauses after inactivity; a query against a paused cluster surfaced to users as "Sequence-similarity search is temporarily unavailable" on `apps/ui`'s Sequence neighborhood tab. Rather than babysit cluster uptime, the neighbor lookup was moved into the warehouse: a new Dagster asset (`pipelines/atlas/assets/ml/neighbors.py`, `protein_neighbors`) reads `fact_embedding`, computes exact top-20 cosine-similarity neighbors per protein with one numpy matmul (a few seconds at 20,431 rows — brute-force beats an ANN index at this scale, and is exact besides), and writes `fact_protein_neighbor` to MotherDuck. `apps/ui/data.py`'s `find_neighbors` is now a plain SQL join against that table; `qdrant-client` is removed from the project entirely (`embeddings.py`'s Qdrant upsert block and `accession_to_id` deleted from both `embeddings.py` and `data.py`). Full write-up in `ARCHITECTURE.md` under "Nearest-neighbor lookup: precomputed table, not a live vector-search service."

@@ -19,10 +19,10 @@ never take a chrome hue. The amino acid composition tab is the one exception:
 it uses its own 5-color side-chain-category palette (render.CATEGORY_COLORS),
 scoped to that tab only.
 
-Queries MotherDuck + Qdrant directly via apps/ui/data.py (no API tier). Run with:
+Queries MotherDuck directly via apps/ui/data.py (no API tier). Run with:
     streamlit run apps/ui/app.py
 Credentials come from st.secrets (.streamlit/secrets.toml) or environment variables:
-MOTHERDUCK_TOKEN, QDRANT_URL, QDRANT_API_KEY.
+MOTHERDUCK_TOKEN.
 """
 
 import html
@@ -34,7 +34,7 @@ from typing import Any
 import duckdb
 import plotly.graph_objects as go
 import streamlit as st
-from qdrant_client.http.exceptions import ApiException
+from streamlit_searchbox import st_searchbox
 
 # `streamlit run apps/ui/app.py` only puts apps/ui on sys.path; add the project root
 # so the absolute `apps.ui.*` imports resolve the same way they do under pytest.
@@ -71,11 +71,6 @@ def get_conn() -> Any:
     return data.connect_motherduck(_secret("MOTHERDUCK_TOKEN"))
 
 
-@st.cache_resource
-def get_qdrant() -> Any:
-    return data.make_qdrant_client(_secret("QDRANT_URL"), _secret("QDRANT_API_KEY"))
-
-
 @st.cache_data(show_spinner="Loading the protein atlas…")
 def load_atlas() -> dict[str, list[Any]]:
     return data.fetch_atlas(get_conn())
@@ -86,18 +81,9 @@ def load_story_card(accession: str) -> dict[str, Any] | None:
     return data.fetch_story_card(get_conn(), accession)
 
 
-@st.cache_data(show_spinner="Loading protein index…")
-def protein_index() -> tuple[list[str], dict[str, str]]:
-    """All proteins as (accessions sorted by label, accession -> 'GENE (Name)' label)."""
-    rows = data.list_proteins(get_conn())
-    labels = {r["uniprot_accession"]: render.display_label(r) for r in rows}
-    accessions = sorted(labels, key=lambda a: labels[a])
-    return accessions, labels
-
-
 @st.cache_data(show_spinner="Finding similar proteins…")
 def load_neighbors(accession: str, k: int = 20) -> list[dict[str, Any]]:
-    return data.find_neighbors(get_qdrant(), accession, k)
+    return data.find_neighbors(get_conn(), accession, k)
 
 
 @st.cache_data(show_spinner=False)
@@ -108,6 +94,11 @@ def load_sequence_lengths(accessions: tuple[str, ...]) -> dict[str, int]:
 @st.cache_data(show_spinner="Loading composition…")
 def load_composition(accession: str) -> list[dict[str, Any]]:
     return data.fetch_composition(get_conn(), accession)
+
+
+@st.cache_data(show_spinner=False)
+def load_search_results(query: str) -> list[dict[str, Any]]:
+    return data.search_proteins(get_conn(), query)
 
 
 def select(accession: str) -> None:
@@ -157,7 +148,7 @@ def render_tour_button() -> None:
 def render_tour_banner(step: tour.TourStep, step_index: int) -> None:
     """The active step's narration card, with Back / Next / Exit controls top right."""
     with st.container(key="tour_card"):
-        col_label, col_nav = st.columns([2, 1], vertical_alignment="center")
+        col_label, col_nav = st.columns([3, 1], vertical_alignment="center")
         with col_label:
             st.markdown(
                 "<div style='color:#888888;font-size:0.72rem;font-weight:700;"
@@ -205,6 +196,10 @@ def inject_css() -> None:
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&display=swap');
 
         .stApp { background: #ffffff; }
+        .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
+
+        [data-testid="stDecoration"] { display: none; }
+        [data-testid="stHeader"]     { background: transparent; }
 
         /* Flat bordered card (no shadow) — the one reusable chrome unit. */
         .card {
@@ -212,7 +207,7 @@ def inject_css() -> None:
             border: 1px solid #e6e6e6;
             border-radius: 10px;
             padding: 22px 26px;
-            margin-bottom: 4px;
+            margin-bottom: 1rem;
         }
         .card a { color: #111111; }
 
@@ -284,11 +279,11 @@ def inject_css() -> None:
            the specificity of the rules above. */
         .st-key-tour_nav {
             display: flex; flex-direction: row; justify-content: flex-end;
-            align-items: center; gap: 0.4rem; margin-top: 10px;
+            align-items: center; gap: 0.5rem; margin-top: 10px;
         }
         .st-key-tour_nav [data-testid="stButton"] button[kind="primary"],
         .st-key-tour_nav [data-testid="stButton"] button[kind="secondary"] {
-            padding: 0.1rem 0.2rem; font-size: 0.82rem; font-weight: 600;
+            padding: 0.1rem 0.3rem; font-size: 0.82rem; font-weight: 600;
             border: none; border-radius: 0; text-decoration: underline;
             color: #8a6d1f; background: transparent;
         }
@@ -304,7 +299,11 @@ def inject_css() -> None:
             border: 1px solid #ecdfb8;
             border-radius: 10px;
             padding: 4px 26px 22px;
-            margin-bottom: 4px;
+            margin-bottom: 1rem;
+        }
+        .st-key-tour_card,
+        .st-key-tour_card > div > [data-testid="stVerticalBlock"] {
+            gap: 4px !important;
         }
 
         /* Atlas insight card: thinner than Streamlit's default st.info padding, so it
@@ -316,6 +315,16 @@ def inject_css() -> None:
         /* Search dropdown / slider: #e6e6e6 frame, ink accents — chrome stays monochrome. */
         [data-baseweb="select"] > div { border-color: #e6e6e6 !important; border-radius: 8px; }
         [data-testid="stSlider"] [role="slider"] { background-color: #111111 !important; }
+
+        /* Tour-start button: Streamlit fades any "stale" element (opacity, 1s ease-in,
+           0.5s delay) while a rerun is in flight. This button's own rerun (loading the
+           tour's first protein) is slow enough that the fade is visible before the
+           button is removed. Suppress it so removal reads as instant, matching the
+           faster paper-to-patent app where the same fade never gets time to play out. */
+        .st-key-tour_start[data-stale="true"] {
+            transition: none !important;
+            opacity: 1 !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -502,30 +511,81 @@ def render_kpis(card: dict[str, Any], threshold: float) -> None:
 # ---------------------------------------------------------------------------
 
 
-def render_search(selected: str) -> None:
-    """A reset-after-use search box: it never carries a value into the next run.
+_SEARCH_LABEL_LIMIT = 42
 
-    With ~20,000 options, pre-selecting the current protein (via `index`) anchors
-    the dropdown's virtualized list to that position, so typing to filter opens
-    on a near-empty view scrolled to where that item used to be. Always starting
-    from `index=None` keeps the dropdown scrolled to the top of the results.
+
+def _truncate_label(label: str, limit: int = _SEARCH_LABEL_LIMIT) -> str:
+    """Cut a dropdown label to one line, ellipsized, instead of letting it wrap.
+
+    Full labels ("GENE (Long descriptive protein name)") often don't fit the
+    sidebar's width and wrap onto a second line with an orphaned trailing word —
+    this keeps every option a single clean line instead.
     """
-    accessions, labels = protein_index()
-    search_key = f"protein_search_{st.session_state.get('protein_search_seq', 0)}"
-    choice = st.selectbox(
-        "Find a protein",
-        options=accessions,
-        index=None,
-        format_func=lambda a: labels.get(a, a),
+    if len(label) <= limit:
+        return label
+    return label[: limit - 1].rstrip() + "…"
+
+
+def _search_options(query: str) -> list[tuple[str, str]]:
+    """(label, accession) pairs for streamlit-searchbox, or [] for an empty query.
+
+    st.selectbox's built-in filter is fuzzy subsequence matching, not substring
+    matching — typing "insulin" can surface unrelated proteins whose label just
+    happens to contain those letters in order. streamlit-searchbox instead calls
+    this function server-side on every (debounced) keystroke, so results come
+    straight from data.search_proteins's real ILIKE '%text%' query.
+    """
+    if not query:
+        return []
+    return [
+        (_truncate_label(render.display_label(r)), r["uniprot_accession"])
+        for r in load_search_results(query)
+    ]
+
+
+def _label_for_accession(accession: str) -> str:
+    """Best-effort 'GENE (Name)' label for an accession, reusing the search cache."""
+    for row in load_search_results(accession):
+        if row["uniprot_accession"] == accession:
+            return render.display_label(row)
+    return accession
+
+
+_SEARCH_STATE_KEY = "protein_search"
+_SEARCH_APPLIED_KEY = "protein_search_applied"
+
+
+def render_search(selected: str) -> None:
+    """A single dropdown: type to filter, live, no Enter needed, true ILIKE matching.
+
+    streamlit-searchbox is a sticky widget: once you pick something, it keeps
+    returning that same accession on every later rerun (that's what makes it show
+    the picked label instead of resetting to blank). That's a problem the moment
+    `selected` changes through some *other* path — a partner node, a neighbor row,
+    a tour step — because this box would keep reporting its old pick and firing
+    `select()` right back to it, undoing that navigation.
+
+    `_SEARCH_APPLIED_KEY` tracks the last choice *this box* has already caused a
+    navigation for. Only a choice that differs from it is a genuinely new pick.
+    Whenever `selected` diverges from that tracked value — i.e. something else
+    changed the protein — the widget is torn down and remounted pre-filled with
+    the new protein's label, so the box always mirrors whatever is actually shown.
+    """
+    default_searchterm = ""
+    if st.session_state.get(_SEARCH_APPLIED_KEY) != selected:
+        st.session_state.pop(_SEARCH_STATE_KEY, None)
+        st.session_state[_SEARCH_APPLIED_KEY] = selected
+        default_searchterm = _label_for_accession(selected)
+
+    choice = st_searchbox(
+        _search_options,
         placeholder="Search a protein — insulin, TP53, EGFR …",
-        label_visibility="collapsed",
-        key=search_key,
+        key=_SEARCH_STATE_KEY,
+        default=selected,
+        default_searchterm=default_searchterm,
     )
-    if choice is not None and choice != selected:
-        # Rotate the widget's key so the next run starts a fresh (empty) selectbox —
-        # Streamlit disallows resetting a widget's own session_state after it's
-        # been instantiated in the same run.
-        st.session_state.protein_search_seq = st.session_state.get("protein_search_seq", 0) + 1
+    if choice is not None and choice != st.session_state.get(_SEARCH_APPLIED_KEY):
+        st.session_state[_SEARCH_APPLIED_KEY] = choice
         select(choice)
 
 
@@ -978,11 +1038,7 @@ def render_neighborhood_tab(card: dict[str, Any], selected: str) -> None:
     with st.container(key="atlas_insight"):
         st.info(render.ATLAS_INSIGHT)
     atlas = load_atlas()
-    try:
-        neighbors = load_neighbors(selected)
-    except ApiException:
-        st.warning("Sequence-similarity search is temporarily unavailable.")
-        neighbors = []
+    neighbors = load_neighbors(selected)
     neighbor_accs = {n["accession"] for n in neighbors}
 
     _, mid, _ = st.columns([1, 4, 1])
@@ -1179,10 +1235,13 @@ def render_composition_tab(card: dict[str, Any], accession: str) -> None:
 
 
 def render_footer() -> None:
-    st.divider()
-    st.caption(
+    st.markdown(
+        "<div style='border-top:1px solid #e6e6e6;margin-top:2rem;padding-top:1rem;"
+        "font-size:11px;color:#aaaaaa;line-height:1.6;'>"
         "Data: UniProt (CC-BY) · STRING-DB (CC-BY) · Human Protein Atlas (CC-BY-SA) · "
         "Open Targets (CC0). A portfolio project — not medical advice."
+        "</div>",
+        unsafe_allow_html=True,
     )
 
 
