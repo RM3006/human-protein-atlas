@@ -70,6 +70,14 @@ CREATE TABLE fact_embedding (
 );
 INSERT INTO fact_embedding VALUES
 ('P01308',1.0,2.0),('P06213',1.1,2.1),('P08069',1.2,2.2);
+
+-- Precomputed top-k cosine-similarity neighbors (protein_neighbors Dagster asset).
+CREATE TABLE fact_protein_neighbor (
+    uniprot_accession VARCHAR, neighbor_accession VARCHAR, similarity FLOAT, rank INTEGER
+);
+INSERT INTO fact_protein_neighbor VALUES
+('P01308','P06213',0.96,1),
+('P01308','P08069',0.91,2);
 """
 
 # (code, name, three-letter code, category, produced_by_body), matching

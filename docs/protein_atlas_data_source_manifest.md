@@ -556,6 +556,16 @@ CREATE TABLE fact_embedding (
     computed_at         TIMESTAMP
 );
 
+-- Precomputed nearest-neighbor lookup, derived from fact_embedding (Part 9; replaced
+-- a live Qdrant vector-search call — see ARCHITECTURE.md "Nearest-neighbor lookup").
+-- Grain: one row per (protein, one of its top-20 neighbors), exact cosine similarity.
+CREATE TABLE fact_protein_neighbor (
+    uniprot_accession   VARCHAR,                -- FK to dim_protein, the queried protein
+    neighbor_accession  VARCHAR,                -- FK to dim_protein, a similar protein
+    similarity          FLOAT,                  -- cosine similarity, 0-1
+    rank                INTEGER                 -- 1 = most similar, 20 = least (of the top 20)
+);
+
 -- Amino-acid composition, derived from dim_protein.sequence (Part 8, no external
 -- source). Grain: one row per (protein, amino_acid_code) for the 20 standard
 -- amino acids. Non-standard residues (e.g. selenocysteine 'U') are excluded, so
@@ -617,5 +627,5 @@ No source requires API keys for the bulk-download path used by this project.
 - Store every raw source download in `cloudflare-r2://atlas-raw/{source}/v{version}/` so old versions are reproducible. Never overwrite.
 - Each source's ingest is a separate Dagster asset. The asset materializes Parquet in R2 (`cloudflare-r2://atlas-bronze/{source}/`).
 - dbt transforms Bronze → Silver → Gold. Gold = the seven tables above. The story-card API reads Gold only.
-- The schema lives in MotherDuck. Embeddings additionally live in Qdrant (because vector search wants a vector index, not a column scan).
+- The schema, including embeddings and the precomputed nearest-neighbor table, lives entirely in MotherDuck — no separate vector database.
 - Run all joins through the `uniprot_accession` column. Resist the temptation to join on gene symbol; symbols change over time, accessions do not.

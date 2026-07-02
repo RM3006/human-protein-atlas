@@ -2,7 +2,7 @@
 
 This checklist enumerates every account, token, and local tool required before Part 1 begins. Most steps are free; the only real costs are an estimated ~$10 in Anthropic API spend during Part 5 and ~$5–10 in Modal GPU spend during Part 4. Everything else fits in free tiers.
 
-On completion, the following nine secret values exist in a gitignored `.env.local`:
+On completion, the following seven secret values exist in a gitignored `.env.local`:
 
 ```
 CLOUDFLARE_ACCOUNT_ID=...
@@ -11,8 +11,6 @@ CLOUDFLARE_R2_SECRET_ACCESS_KEY=...
 MOTHERDUCK_TOKEN=...
 MODAL_TOKEN_ID=...
 MODAL_TOKEN_SECRET=...
-QDRANT_URL=...
-QDRANT_API_KEY=...
 ANTHROPIC_API_KEY=...
 ```
 
@@ -110,16 +108,6 @@ Tools installed on the development machine. One-time install.
   4. Authentication: `modal token new` (opens a browser tab).
 - **Secrets**: `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET` (written by `modal token new` to `~/.modal/`).
 
-### D2. Qdrant Cloud — vector database
-- **Why**: similarity search over the 20k × 1280-dim ESM-2 embeddings. Streamlit queries Qdrant directly for "find proteins like this one" functionality.
-- **Used in**: Parts 4 (load vectors) and 6 (query vectors).
-- **Cost**: free for 1 cluster, 1 GB storage. The project fits comfortably.
-- **Steps**:
-  1. Registration at cloud.qdrant.io.
-  2. Create a free cluster (e.g. `atlas`).
-  3. Retain the **cluster URL** and generate an **API key**.
-- **Secrets**: `QDRANT_URL`, `QDRANT_API_KEY`.
-
 ---
 
 ## Phase E — LLM batch rewrites
@@ -148,7 +136,7 @@ Tools installed on the development machine. One-time install.
   2. At Part 6, configure it to point at the repo's `apps/ui/app.py`. Dependencies are
      installed from `apps/ui/requirements.txt` (a minimal subset of `pyproject.toml`,
      scoped to what the UI imports), not the repo-root `pyproject.toml`.
-- **Secrets**: configured in the Streamlit Cloud UI, not in `.env.local`. `MOTHERDUCK_TOKEN`, `QDRANT_URL`, `QDRANT_API_KEY`, and any UI tokens are added there.
+- **Secrets**: configured in the Streamlit Cloud UI, not in `.env.local`. `MOTHERDUCK_TOKEN` and any UI tokens are added there.
 
 ### F2. Keep-alive — two GitHub Actions workflows
 
@@ -195,7 +183,8 @@ Tools and services deliberately excluded from the stack:
 - **AWS / GCP / Azure** — the stack uses Cloudflare R2 + Modal + MotherDuck because they are cheaper and simpler at this scale.
 - **Docker Desktop** — Modal builds images server-side. Local Docker is only useful for debugging Modal image builds (uncommon).
 - **Snowflake / Databricks** — MotherDuck covers the warehouse need at far lower cost for this data volume.
-- **Postgres or a managed relational DB** — no relational store needed; MotherDuck is the warehouse, Qdrant is the vector store.
+- **Postgres or a managed relational DB** — no relational store needed; MotherDuck is the warehouse.
+- **Qdrant / a dedicated vector database** — used through Part 8, dropped in Part 9: at ~20k proteins, an exact brute-force cosine-similarity table precomputed into MotherDuck is both simpler and more accurate than a live ANN index (see `ARCHITECTURE.md`).
 - **Neo4j or any graph DB** — deferred to v2 if the knowledge-graph view is built.
 - **Dagster Cloud** — explicitly avoided in favor of self-hosted OSS Dagster to dodge credit limits.
 
@@ -212,7 +201,6 @@ Part 1 can begin when **every** box is checked:
 - [ ] Cloudflare R2 dashboard shows the activated R2 service.
 - [ ] MotherDuck dashboard shows the `atlas` database.
 - [ ] Modal dashboard shows an authenticated workspace.
-- [ ] Qdrant Cloud dashboard shows the running `atlas` cluster.
 - [ ] Anthropic console shows an API key and an active monthly budget cap.
 
 
