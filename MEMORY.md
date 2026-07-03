@@ -70,7 +70,7 @@ Hero screenshot dropped — live demo link is the primary visual entry point; a 
 
 ## CI dbt gate
 
-`source_root` var added to all staging models (default `r2://atlas-raw`; CI overrides to `models/fixtures/bronze`). Empty Bronze Parquet stubs committed; `dbt build --exclude tag:real_data` runs on every PR against in-memory DuckDB. Unit tests: `test_fact_interaction_dedup` (LEAST/GREATEST + MAX + self-loop drop) and `test_fact_protein_disease_floor` (0.09 excluded, 0.10 included). Two volume/cardinality guards tagged `real_data` — run manually against the live warehouse, not in CI.
+`source_root` var added to all staging models (default `r2://atlas-raw`; CI overrides to `models/fixtures/bronze`). Empty Bronze Parquet stubs committed; `dbt build --exclude tag:real_data` runs on every PR against in-memory DuckDB. Unit tests: `test_fact_interaction_dedup` (LEAST/GREATEST + MAX + self-loop drop) and `test_fact_protein_disease_floor` (0.09 excluded, 0.10 included). Two volume/cardinality guards tagged `real_data` run automatically in any `dbt build`/`dbt test` against a real target (e.g. `dbt build --target dev`) — only excluded in CI, whose zero-row fixtures can never satisfy a volume check. Nothing schedules a `--target dev` run automatically; that's the actual manual step.
 
 ## Qdrant dropped for a precomputed fact_protein_neighbor table
 
