@@ -3,7 +3,7 @@ version: '1.0.0'
 profile: atlas
 config-version: 2
 
-model-paths: ["staging", "marts", "queries"]
+model-paths: ["staging", "marts"]
 seed-paths: ["seeds"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
@@ -28,3 +28,18 @@ vars:
 models:
   atlas:
     +materialized: view
+
+# Views, not tables: these just point at the Bronze Parquet in R2 (or the CI
+# fixture stubs), never copy it, so `source()` resolves to a real, introspectable
+# relation for dbt docs without duplicating Bronze into the warehouse.
+on-run-start:
+  - "CREATE SCHEMA IF NOT EXISTS bronze"
+  - "{{ bronze_view_sql('uniprot', var('source_root') ~ '/uniprot/v' ~ var('uniprot_version') ~ '/uniprot_human_reviewed_raw.parquet') }}"
+  - "{{ bronze_view_sql('string', var('source_root') ~ '/string/v' ~ var('string_version') ~ '/string_interactions.parquet') }}"
+  - "{{ bronze_view_sql('hpa', var('source_root') ~ '/hpa/' ~ var('hpa_version') ~ '/hpa_proteome.parquet') }}"
+  - "{{ bronze_view_sql('ot_targets', var('source_root') ~ '/opentargets/v' ~ var('ot_version') ~ '/ot_targets.parquet') }}"
+  - "{{ bronze_view_sql('ot_diseases', var('source_root') ~ '/opentargets/v' ~ var('ot_version') ~ '/ot_diseases.parquet') }}"
+  - "{{ bronze_view_sql('ot_associations', var('source_root') ~ '/opentargets/v' ~ var('ot_version') ~ '/ot_associations.parquet') }}"
+  - "{{ bronze_view_sql('ot_drugs', var('source_root') ~ '/opentargets/v' ~ var('ot_version') ~ '/ot_drugs.parquet') }}"
+  - "{{ bronze_view_sql('ot_drug_molecules', var('source_root') ~ '/opentargets/v' ~ var('ot_version') ~ '/ot_drug_molecules.parquet') }}"
+  - "{{ bronze_view_sql('llm_rewrites', var('source_root') ~ '/llm/v' ~ var('llm_version') ~ '/protein_rewrites.parquet') }}"

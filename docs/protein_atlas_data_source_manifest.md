@@ -606,6 +606,16 @@ This is a textbook **star schema**: `dim_protein` and `dim_disease` and `dim_dru
 
 **No incremental ETL is required for v1.** Every source is small enough that "full reload" is faster and simpler than incremental diff logic. This is a deliberate simplification; you can add incremental loads later if the data grows. Right now, the entire stack fits in a few hundred MB.
 
+### Refresh checklist
+
+Nothing schedules a refresh — there is no cron or scheduled ingest job, so it only happens when someone runs it. Steps for whichever source changed:
+
+1. Bump that source's version var in `models/dbt_project.yml` (`uniprot_version`, `string_version`, `hpa_version`, or `ot_version` — one `ot_version` covers all four Open Targets datasets).
+2. Re-run that source's Dagster ingest asset(s) so the new version lands in R2:
+   `uv run dagster asset materialize --select <asset_name> -m atlas.definitions`, where `<asset_name>` is `uniprot_human_reviewed_raw`, `string_interactions_raw`, `hpa_proteome_raw`, or one of `ot_targets_raw` / `ot_diseases_raw` / `ot_associations_raw` / `ot_drugs_raw` / `ot_drug_molecules_raw`.
+3. Rebuild the warehouse against the real data: `cd models`, then optionally `dbt parse --target dev` as a fast connection/compile check, then `dbt build --target dev`. The build automatically runs every test, including the two tagged `real_data` (`assert_dim_protein_volume_sane`, `assert_dim_protein_family_group_valid`) — no separate command needed; they're excluded only in CI (`--exclude tag:real_data`) because CI's zero-row fixtures can never satisfy a volume/cardinality check.
+4. **Step 3 has to actually be run against `--target dev`, not `--target ci`.** Day-to-day development typically runs against `ci` (in-memory DuckDB + fixtures), which never touches these two tests at all — they only exist to catch a source silently returning wrong-shaped or truncated data (the failure class ordinary schema tests miss; see `models/tests/assert_dim_protein_volume_sane.sql`), and that can only be checked against the real warehouse. A failure here shows up exactly like any other failing test — the point of this checklist item is making sure the `dev` run happens at all, not that the failure is somehow hidden if it does.
+
 ---
 
 ## License summary

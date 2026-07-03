@@ -5,16 +5,24 @@ models:
     description: "One row per reviewed human protein. Anchor table; every fact table joins here."
     columns:
       - name: uniprot_accession
-        description: "UniProt primary accession — primary key."
+        description: "{{ doc('uniprot_accession') }} Primary key."
         tests:
           - unique
           - not_null
+      - name: gene_symbol
+        description: "HGNC gene symbol, from UniProt. Display-only — never a join key (CLAUDE.md rule 1)."
       - name: protein_name
         tests:
           - not_null
+      - name: sequence_length
+        description: "Amino acid count. Equals `length(sequence)` by construction; enforced by `assert_dim_protein_sequence_length_consistent`."
       - name: sequence
         tests:
           - not_null
+      - name: pfam_id
+        description: "Primary Pfam protein-family ID (e.g. `PF00049`), from UniProt's first cross-reference. NULL where UniProt has none."
+      - name: function_raw
+        description: "UniProt FUNCTION text, or 'No information available' if UniProt had none. Source text for the LLM rewrite; not shown to the reader directly (CLAUDE.md two-tier editorial pattern)."
       - name: function_friendly
         description: "Plain-English rewrite of function_raw — editorial > LLM > raw > 'No information available', via COALESCE. Never NULL by construction; pinned here so a future COALESCE edit can't silently reintroduce nulls into the UI."
         tests:
@@ -25,32 +33,55 @@ models:
           - not_null
       - name: is_curated
         description: "TRUE for the 100 hand-authored proteins in the editorial seed."
+      - name: ensembl_gene_id
+        description: "Ensembl gene ID from UniProt's own cross-reference; a display field only. Not the Open Targets join path — see `stg_uniprot.ensembl_gene_id` for why the two sources' Ensembl IDs are never cross-validated."
+      - name: string_protein_id
+        description: "STRING protein ID from UniProt's own cross-reference; a display field only. `fact_interaction` does not use it — see `stg_uniprot.string_protein_id`."
+      - name: chembl_target_id
+        description: "Reserved for the v2 ChEMBL bioactivity integration (see ROADMAP.md). Always NULL in v1 — never invented (CLAUDE.md rule 5)."
+      - name: protein_class
+        description: "Raw comma-separated HPA classification string, passed through from `stg_hpa` for display as tag chips. NULL for proteins HPA has no row for."
+      - name: subcellular_location
+        description: "Comma-separated subcellular compartments from HPA (e.g. \"Vesicles, Golgi apparatus\"). NULL for proteins HPA has no row for."
+      - name: family_group
+        description: "Coarse family bucket for the atlas map color dimension (e.g. 'Enzymes', 'Receptors'), derived from `protein_class` via the `family_group_map` seed, taking the lowest-priority (most specific) match. 'Unclassified' when no token maps or HPA has no row. Enforced non-null with >= 9 distinct buckets by `assert_dim_protein_family_group_valid`."
+      - name: updated_at
+        description: "Timestamp this row was built by dbt (`CURRENT_TIMESTAMP` at model run time) — a build marker, not a source-data freshness signal."
 
   - name: dim_disease
     description: "One row per EFO disease term from Open Targets."
     columns:
       - name: efo_id
-        description: "EFO disease ID — primary key."
+        description: "{{ doc('efo_id') }} Primary key."
         tests:
           - unique
           - not_null
       - name: disease_name
         tests:
           - not_null
+      - name: therapeutic_area
+        description: "Reserved for a future release — derivable from Open Targets' `parents` EFO hierarchy via a recursive self-join, not yet implemented. Always NULL in v1 — never invented (CLAUDE.md rule 5)."
 
   - name: dim_drug
     description: "One row per ChEMBL drug that appears in clinical_target associations."
     columns:
       - name: chembl_id
-        description: "ChEMBL molecule ID — primary key."
+        description: "{{ doc('chembl_id') }} Primary key."
         tests:
           - unique
           - not_null
+      - name: drug_name
+        description: "Display name from `stg_ot_drug_molecules`. NULL if Open Targets has no preferred name for the molecule."
+      - name: max_phase
+        description: "Highest clinical trial phase reached across all of this drug's target relationships, mapped from the raw OT category to 0-4 (4 = approved). Combined-phase trials (e.g. `PHASE_2_3`) floor to the lower, definitively-completed phase. NULL where the raw category was `UNKNOWN` — never guessed (CLAUDE.md rule 5). Range enforced by `assert_dim_drug_max_phase_range`."
+      - name: modality
+        description: "Drug type/modality from `stg_ot_drug_molecules` (e.g. 'Small molecule', 'Antibody'). NULL if Open Targets has no molecule record for the drug."
 
   - name: fact_protein_tissue
     description: "HPA tissue expression summary, one row per protein."
     columns:
       - name: uniprot_accession
+        description: "{{ doc('uniprot_accession') }}"
         tests:
           - unique
           - not_null
@@ -58,11 +89,16 @@ models:
               arguments:
                 to: ref('dim_protein')
                 field: uniprot_accession
+      - name: tissue
+        description: "HPA tissue-specificity category (e.g. \"Tissue enhanced (pancreas)\") — the story card's \"Made in\" slot."
+      - name: expression_level
+        description: "HPA tissue-distribution / breadth category (e.g. \"Detected in single\")."
 
   - name: fact_interaction
     description: "STRING-DB high-confidence interactions, limited to Swiss-Prot human proteins."
     columns:
       - name: uniprot_a
+        description: "{{ doc('uniprot_accession') }} Canonical `LEAST()` of the pair — always < `uniprot_b`."
         tests:
           - not_null
           - relationships:
@@ -70,6 +106,7 @@ models:
                 to: ref('dim_protein')
                 field: uniprot_accession
       - name: uniprot_b
+        description: "{{ doc('uniprot_accession') }} Canonical `GREATEST()` of the pair — always > `uniprot_a`."
         tests:
           - not_null
           - relationships:
@@ -77,6 +114,7 @@ models:
                 to: ref('dim_protein')
                 field: uniprot_accession
       - name: combined_score
+        description: "STRING-DB confidence, 0-1000 (already >= 700 from `stg_string`); `MAX()` across any symmetric/paralog duplicates collapsed into this canonical pair. Range enforced by `assert_fact_interaction_combined_score_range`."
         tests:
           - not_null
 
@@ -94,6 +132,7 @@ models:
       assert_fact_protein_disease_overall_score_range for the enforced contract.
     columns:
       - name: uniprot_accession
+        description: "{{ doc('uniprot_accession') }}"
         tests:
           - not_null
           - relationships:
@@ -101,6 +140,7 @@ models:
                 to: ref('dim_protein')
                 field: uniprot_accession
       - name: efo_id
+        description: "{{ doc('efo_id') }}"
         tests:
           - not_null
           - relationships:
@@ -108,6 +148,7 @@ models:
                 to: ref('dim_disease')
                 field: efo_id
       - name: overall_score
+        description: "`MAX(overall_score)` across any paralog duplicates for this (protein, disease) pair, floored at 0.1 (see model description). Range [0.1, 1] enforced by `assert_fact_protein_disease_overall_score_range`."
         tests:
           - not_null
 
@@ -120,6 +161,7 @@ models:
       few proteins carrying non-standard residues like selenocysteine).
     columns:
       - name: uniprot_accession
+        description: "{{ doc('uniprot_accession') }}"
         tests:
           - not_null
           - relationships:
@@ -127,6 +169,7 @@ models:
                 to: ref('dim_protein')
                 field: uniprot_accession
       - name: amino_acid_code
+        description: "Single-letter IUPAC code for one of the 20 standard amino acids (e.g. 'A'). Foreign key to `seed_amino_acids`."
         tests:
           - not_null
           - relationships:
@@ -134,9 +177,11 @@ models:
                 to: ref('seed_amino_acids')
                 field: amino_acid_code
       - name: count
+        description: "Number of residues of this amino acid type in the protein's sequence."
         tests:
           - not_null
       - name: pct_of_sequence
+        description: "`count / sequence_length * 100`, rounded to 2 decimal places. The 20 rows per protein sum to ~100%, just under for the few proteins carrying non-standard residues (e.g. selenocysteine) that aren't counted in any of the 20 buckets."
         tests:
           - not_null
 
@@ -144,6 +189,7 @@ models:
     description: "Drug-target-disease triples from Open Targets clinical_target."
     columns:
       - name: chembl_id
+        description: "{{ doc('chembl_id') }}"
         tests:
           - not_null
           - relationships:
@@ -151,6 +197,7 @@ models:
                 to: ref('dim_drug')
                 field: chembl_id
       - name: uniprot_accession
+        description: "{{ doc('uniprot_accession') }}"
         tests:
           - not_null
           - relationships:
@@ -164,3 +211,5 @@ models:
               arguments:
                 to: ref('dim_disease')
                 field: efo_id
+      - name: mechanism_of_action
+        description: "Reserved for the v2 `drug_mechanism_of_action` Open Targets dataset (not present in `clinical_target`, the only OT drug dataset ingested in v1). Always NULL in v1 — never invented (CLAUDE.md rule 5)."

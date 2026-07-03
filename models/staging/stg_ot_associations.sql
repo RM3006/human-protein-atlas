@@ -6,6 +6,4 @@ SELECT
     targetId                                    AS ensembl_gene_id,
     diseaseId                                   AS efo_id,
     CAST(associationScore AS DECIMAL(10, 6))    AS overall_score
-FROM read_parquet(
-    '{{ var("source_root") }}/opentargets/v{{ var("ot_version") }}/ot_associations.parquet'
-)
+FROM {{ source('bronze', 'ot_associations') }}

@@ -1,0 +1,47 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: >
+      Raw Parquet landed in Cloudflare R2 by the Dagster ingest pipeline
+      (`pipelines/atlas/assets/ingest/`), one file per source per version.
+      Each table below is a thin passthrough view (`CREATE OR REPLACE VIEW
+      bronze.<name> AS SELECT * FROM read_parquet(...)`), created by the
+      `on-run-start` hook in `dbt_project.yml` before any model runs — the view
+      holds no data, it just points at the file, so Bronze still lives only in
+      R2 (never copied into the warehouse). Because it's a real view, dbt can
+      introspect its columns for `dbt docs`, unlike a bare `read_parquet()`
+      call. `source_root` defaults to `r2://atlas-raw` in prod; CI overrides it
+      to `models/fixtures/bronze` (zero-row stubs) so the full DAG builds
+      offline (see `dbt_project.yml` vars and
+      `models/fixtures/build_bronze_stubs.py`). Version vars (`uniprot_version`,
+      `hpa_version`, `string_version`, `ot_version`, `llm_version`) are also
+      project vars, bumped in `dbt_project.yml` on each source refresh — bump
+      them in the `on-run-start` hook too, they are not read from here.
+    tables:
+      - name: uniprot
+        description: "UniProt Swiss-Prot human-reviewed export (bulk proteomes FTP dump). Read by stg_uniprot."
+
+      - name: string
+        description: "STRING-DB protein-protein interactions (v12.0), pre-resolved to UniProt accessions during ingest. Read by stg_string."
+
+      - name: hpa
+        description: "Human Protein Atlas proteome summary (proteinatlas.tsv, v24). Read by stg_hpa."
+
+      - name: ot_targets
+        description: "Open Targets target metadata, all species (v26.03 `output/target/`). Read by stg_ot_targets."
+
+      - name: ot_diseases
+        description: "Open Targets EFO disease ontology (v26.03 `output/disease/disease.parquet`). Read by stg_ot_diseases."
+
+      - name: ot_associations
+        description: "Open Targets gene-disease association scores, all species (v26.03 `output/association_overall_direct/`). Read by stg_ot_associations."
+
+      - name: ot_drugs
+        description: "Open Targets drug-target-disease triples (v26.03 `output/clinical_target/clinical_target.parquet`). Read by stg_ot_drugs."
+
+      - name: ot_drug_molecules
+        description: "Open Targets drug molecule metadata — preferred names and modality (v26.03 `drug_molecule/`). Read by stg_ot_drug_molecules."
+
+      - name: llm_rewrites
+        description: "Claude Haiku plain-English rewrites of UniProt function text, written by the protein_llm_rewrites Dagster asset (Anthropic Batch API). Read by stg_llm_rewrites."

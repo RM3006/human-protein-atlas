@@ -1,0 +1,30 @@
+version: 2
+
+analyses:
+  - name: protein_story_card
+    description: >
+      The canonical story-card shape: one row for a single protein (selected via
+      the `accession` var, default `P01308`/insulin), with everything a story
+      card needs — protein fields, tissue expression, and three top-N cross-reference
+      lists — in one query. This lives under `analyses/` rather than `staging/`
+      or `marts/` on purpose: it is a reference query, not something the
+      warehouse should hold as a live view. `apps/ui/data.py`'s `STORY_CARD_SQL`
+      is a hand-port of this exact SQL (`ref()` calls become bare table names,
+      the `accession` var becomes a `?` placeholder), because the Streamlit app
+      has no dbt runtime dependency (see ARCHITECTURE.md, "No API tier"). dbt
+      still parses and compiles this file on every `dbt compile`/`dbt docs
+      generate`, so a `ref()` rename elsewhere breaks it loudly instead of it
+      silently drifting from the mart schema; it is never materialized as a
+      database object, so there is no unused view to keep around. Most fields
+      pass straight through from `dim_protein` and `fact_protein_tissue` — see
+      those models' column docs; only the three computed list columns are
+      documented here.
+    columns:
+      - name: uniprot_accession
+        description: "{{ doc('uniprot_accession') }}"
+      - name: top_interaction_partners
+        description: "Top 5 STRING interaction partners by `combined_score`, as `LIST(STRUCT(accession, gene_symbol, protein_name, combined_score))` — typed fields rather than a pre-formatted \"name (score)\" string, so the UI can render clickable cross-references without a second lookup or string-parsing (see the model's header comment for why)."
+      - name: top_diseases
+        description: "Top 5 Open Targets disease associations by `overall_score`, as `LIST(STRUCT(efo_id, disease_name, overall_score))`."
+      - name: approved_drugs
+        description: "Top 5 drugs whose molecular target is this protein and whose `max_phase >= 3`, as `LIST(STRUCT(chembl_id, drug_name, max_phase))`, ranked by phase. Ligands (e.g. insulin) legitimately return an empty list — drugs attach to the molecular target, not the ligand (see the Open Targets \"How it joins\" note in the data-source manifest)."

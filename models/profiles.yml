@@ -18,3 +18,11 @@ atlas:
       path: ":memory:"
       schema: main
       threads: 4
+    docs:
+      # File-based (not :memory:) so `dbt build` and `dbt docs generate` — separate
+      # CLI invocations in the docs-publish workflow — share the same materialized
+      # relations; :memory: would reset between commands and produce an empty catalog.
+      type: duckdb
+      path: "docs_build.duckdb"
+      schema: main
+      threads: 4

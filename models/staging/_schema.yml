@@ -5,32 +5,63 @@ models:
     description: "UniProt Swiss-Prot reviewed human proteins, flattened to one row per primary accession."
     columns:
       - name: uniprot_accession
-        description: "UniProt primary accession — join key across the entire atlas."
+        description: "{{ doc('uniprot_accession') }} Primary key of this model — one row per Swiss-Prot reviewed human protein (canonical isoform only; secondary isoforms like `P01308-2` are not ingested)."
         tests:
           - unique
           - not_null
+      - name: gene_symbol
+        description: "HGNC gene symbol (e.g. `INS`). Display-only; never used as a join key (CLAUDE.md rule 1) since symbols are many-to-many with accessions and drift across releases."
+      - name: protein_name
+        description: "UniProt recommended full name (e.g. `Insulin`)."
+      - name: sequence_length
+        description: "Amino acid count, taken directly from the UniProt record. Must equal `length(sequence)`; enforced downstream by `assert_dim_protein_sequence_length_consistent`."
       - name: sequence
+        description: "Full amino-acid sequence string, canonical isoform only. Input to the ESM-2 embedding pipeline and to `fact_protein_aa_composition`."
         tests:
           - not_null
+      - name: function_raw
+        description: "UniProt FUNCTION free-text annotation, biologist-flavored (e.g. \"Insulin decreases blood glucose concentration...\"). Rewritten into plain English downstream by `stg_llm_rewrites` / the editorial seed. NULL where UniProt has no function text for the protein."
+      - name: pfam_id
+        description: "First Pfam protein-family ID from the record's cross-references (e.g. `PF00049`). Only the first is kept; a protein with multiple Pfam domains shows just the primary one."
+      - name: ensembl_gene_id
+        description: "First Ensembl gene ID from UniProt's own cross-references (e.g. `ENSG00000254647`), carried through to `dim_protein` as a display field. Not used to join Open Targets — that join instead resolves via `stg_ot_targets`, which derives `uniprot_accession` independently from Open Targets' own `proteinIds`; the two sources' Ensembl IDs are never cross-validated. NULL where UniProt has no Ensembl cross-reference."
+      - name: string_protein_id
+        description: "First STRING protein ID from UniProt's own cross-references (e.g. `9606.ENSP00000250971`), carried through to `dim_protein` as a display field. Not used to join STRING interactions — `stg_string` ships already resolved to `uniprot_accession` (mapped during ingest, see `pipelines/atlas/assets/ingest/string.py`). NULL where UniProt has no STRING cross-reference."
 
   - name: stg_hpa
     description: "Human Protein Atlas proteome summary (v24), one row per UniProt accession."
     columns:
       - name: uniprot_accession
+        description: "{{ doc('uniprot_accession') }} One row per gene with a UniProt mapping; rows HPA ships with no mapping are dropped in this model (see model description)."
         tests:
           - unique
           - not_null
+      - name: gene_symbol
+        description: "HPA's own HGNC gene symbol. Display-only, not used as a join key; not cross-validated against `stg_uniprot.gene_symbol`."
+      - name: protein_class
+        description: "Comma-separated multi-label HPA classification (e.g. \"Enzymes, Predicted intracellular proteins\") mixing function, localization, pathway, detection, and disease-flag tags. Exploded in `dim_protein` into the coarse `family_group` atlas-color dimension via the `family_group_map` seed; the raw comma-joined string is also carried through to `dim_protein.protein_class` for display."
+      - name: rna_tissue_specificity
+        description: "Tissue-specificity category (e.g. \"Tissue enhanced (pancreas)\"). Replaces the `Tissue expression` column HPA removed in v24; carried to `fact_protein_tissue.tissue` as the story card's \"Made in\" slot."
+      - name: rna_tissue_distribution
+        description: "Breadth-of-expression category (e.g. \"Detected in single\"). Carried to `fact_protein_tissue.expression_level`."
+      - name: subcellular_location
+        description: "Comma-separated subcellular compartments (e.g. \"Vesicles, Golgi apparatus\"). Carried through to `dim_protein.subcellular_location` for display; not exploded or classified further."
+      - name: disease_involvement
+        description: "Comma-separated disease/drug-target flags (e.g. \"Diabetes mellitus, FDA approved drug targets\"). Ingested but not currently consumed by any mart or the UI — a candidate story-card tag chip (see the data-source manifest) that was never wired up."
 
   - name: stg_string
     description: "STRING-DB high-confidence interactions (score >= 700), resolved to UniProt accessions."
     columns:
       - name: uniprot_a
+        description: "{{ doc('uniprot_accession') }} One endpoint of the interaction pair, as resolved by STRING's own alias mapping during ingest. Not yet canonicalized at this layer — `fact_interaction` imposes `uniprot_a < uniprot_b` ordering; here the pair can appear on either side, and symmetrically (A-B and B-A both present)."
         tests:
           - not_null
       - name: uniprot_b
+        description: "{{ doc('uniprot_accession') }} The other endpoint of the interaction pair; see `uniprot_a`."
         tests:
           - not_null
       - name: combined_score
+        description: "STRING-DB confidence score, integer 0-1000 (divide by 1000 for a 0-1 confidence fraction). Pre-filtered to >= 700 — STRING's own \"high confidence\" threshold — during ingest."
         tests:
           - not_null
 
@@ -38,18 +69,27 @@ models:
     description: "Open Targets target metadata with UniProt Swiss-Prot accession extracted from proteinIds."
     columns:
       - name: ensembl_gene_id
+        description: "{{ doc('ensembl_gene_id') }} Primary key of this model — one row per Open Targets target (all species)."
         tests:
           - unique
           - not_null
+      - name: gene_symbol
+        description: "Open Targets' own approved HGNC symbol. Not currently surfaced in any mart — kept for potential future display/debugging use; not cross-validated against `stg_uniprot.gene_symbol`."
+      - name: gene_name
+        description: "Open Targets' full gene/protein name (e.g. \"insulin\"). Not currently surfaced in any mart — kept for potential future display use."
+      - name: uniprot_accession
+        description: "{{ doc('uniprot_accession') }} Extracted from `proteinIds` where `source = 'uniprot_swissprot'`. NULL for target rows with no Swiss-Prot mapping (rare, and common for non-human species); NULL rows are filtered out via `INNER JOIN` wherever this model feeds a mart, never coerced (CLAUDE.md rule 5)."
 
   - name: stg_ot_diseases
     description: "Open Targets EFO disease ontology — one row per disease term."
     columns:
       - name: efo_id
+        description: "{{ doc('efo_id') }} Primary key of this model — one row per Open Targets disease term."
         tests:
           - unique
           - not_null
       - name: disease_name
+        description: "Human-readable disease/phenotype name (e.g. \"type 1 diabetes mellitus\")."
         tests:
           - not_null
 
@@ -57,12 +97,15 @@ models:
     description: "Open Targets gene-disease association scores (all species; filtered to human in marts)."
     columns:
       - name: ensembl_gene_id
+        description: "{{ doc('ensembl_gene_id') }} Not unique in this model — one row per (gene, disease) pair, all species."
         tests:
           - not_null
       - name: efo_id
+        description: "{{ doc('efo_id') }}"
         tests:
           - not_null
       - name: overall_score
+        description: "Open Targets' weight-of-evidence composite score in [0, 1] — not a probability or effect size. Raw distribution is heavily right-skewed (median ~0.02 across all human pairs); the mart layer applies a >= 0.1 floor to drop trace-level noise (see `fact_protein_disease`'s header comment for the full rationale)."
         tests:
           - not_null
 
@@ -70,11 +113,15 @@ models:
     description: "Open Targets drug-target-disease triples from clinical_target (v26.03). max_clinical_stage_raw is a string category (APPROVAL, PHASE_3, etc.) mapped to numeric in dim_drug."
     columns:
       - name: chembl_id
+        description: "{{ doc('chembl_id') }} Not unique in this model — one row per (drug, target) relationship in `clinical_target`; a drug can target multiple genes and vice versa."
         tests:
           - not_null
       - name: ensembl_gene_id
+        description: "{{ doc('ensembl_gene_id') }}"
         tests:
           - not_null
+      - name: disease_ids
+        description: "List of `STRUCT(diseaseFromSource, diseaseId)` — the disease indications this drug-target relationship treats. `fact_drug_target_disease` unnests this and keeps only `.diseaseId` (the EFO/MONDO/... ID); the free-text `diseaseFromSource` label is dropped."
       - name: max_clinical_stage_raw
         description: "Raw OT clinical-stage category. Enumerated so a new/renamed category from OT fails this test loudly instead of silently becoming NULL in dim_protein.max_phase (CLAUDE.md: never silently coerce)."
         tests:
@@ -98,15 +145,20 @@ models:
     description: "Open Targets drug molecule metadata — preferred names and modality."
     columns:
       - name: chembl_id
+        description: "{{ doc('chembl_id') }} Primary key of this model — one row per ChEMBL molecule."
         tests:
           - unique
           - not_null
+      - name: drug_name
+        description: "Preferred/display drug name (e.g. \"Humulin\"). NULL if Open Targets has no preferred name for the molecule."
+      - name: modality
+        description: "Drug type/modality category (e.g. \"Small molecule\", \"Antibody\")."
 
   - name: stg_llm_rewrites
     description: "Claude Haiku plain-English rewrites of UniProt function text for all ~20k proteins. Written by the protein_llm_rewrites Dagster asset."
     columns:
       - name: uniprot_accession
-        description: "UniProt primary accession — join key."
+        description: "{{ doc('uniprot_accession') }}"
         tests:
           - unique
           - not_null

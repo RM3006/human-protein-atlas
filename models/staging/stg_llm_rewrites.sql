@@ -7,6 +7,4 @@ SELECT
     uniprot_accession,
     function_friendly,
     tagline
-FROM read_parquet(
-    '{{ var("source_root") }}/llm/v{{ var("llm_version") }}/protein_rewrites.parquet'
-)
+FROM {{ source('bronze', 'llm_rewrites') }}

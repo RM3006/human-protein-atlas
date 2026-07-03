@@ -6,7 +6,5 @@ SELECT
     id        AS chembl_id,
     name      AS drug_name,
     drugType  AS modality
-FROM read_parquet(
-    '{{ var("source_root") }}/opentargets/v{{ var("ot_version") }}/ot_drug_molecules.parquet'
-)
+FROM {{ source('bronze', 'ot_drug_molecules') }}
 WHERE id IS NOT NULL

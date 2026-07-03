@@ -1,0 +1,76 @@
+name: dbt docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "models/**"
+      - ".github/workflows/dbt-docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: dbt docs generate
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.11"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: dbt build (materialize Bronze fixtures so the catalog has real column types)
+        # Uses the `docs` target: a file-based DuckDB, not `ci`'s :memory:, so this
+        # build and the docs-generate step below share the same relations. No
+        # MotherDuck credentials involved — this workflow's output is a public
+        # GitHub Pages site, so the real warehouse is intentionally never touched.
+        run: >
+          uv run dbt build
+          --project-dir models
+          --profiles-dir models
+          --target docs
+          --vars '{"source_root": "models/fixtures/bronze"}'
+          --exclude tag:real_data
+
+      - name: dbt docs generate
+        run: >
+          uv run dbt docs generate
+          --project-dir models
+          --profiles-dir models
+          --target docs
+          --vars '{"source_root": "models/fixtures/bronze"}'
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: models/target
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

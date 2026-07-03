@@ -5,7 +5,7 @@ is created by connect_motherduck and cached in app.py via st.cache_resource; the
 functions take a connection so they stay framework-agnostic and testable against an
 in-memory DuckDB loaded with fixtures.
 
-The story-card statement is a hand-port of models/queries/protein_story_card.sql
+The story-card statement is a hand-port of models/analyses/protein_story_card.sql
 (the canonical spec): dbt `{{ ref('x') }}` -> `x`, `{{ var("accession") }}` -> `?`,
 plus the `family_group` column. Its three LIST(STRUCT) columns come back from DuckDB
 as nested Python lists of dicts.

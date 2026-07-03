@@ -83,15 +83,15 @@ Tools installed on the development machine. One-time install.
 - **Secrets**: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_R2_ACCESS_KEY_ID`, `CLOUDFLARE_R2_SECRET_ACCESS_KEY`.
 
 ### C2. MotherDuck — the warehouse
-- **Why**: cloud-hosted DuckDB. Holds the modeled Silver/Gold tables (`dim_protein`, `dim_disease`, `dim_drug`, the fact tables). The API queries this in production.
-- **Used in**: Parts 3, 4, 5, 6 (dbt builds here; the API reads from here).
+- **Why**: cloud-hosted DuckDB. Holds the modeled Silver/Gold tables (`dim_protein`, `dim_disease`, `dim_drug`, the fact tables). The Streamlit app queries this in production.
+- **Used in**: Parts 3, 4, 5, 6 (dbt builds here; the Streamlit app reads from here).
 - **Cost**: free up to 10 GB. The project uses well under.
 - **Steps**:
   1. Registration at app.motherduck.com (Google or GitHub OAuth — no separate password).
-  2. The `atlas` database is created automatically on first `dbt run` (no manual step needed).
+  2. The `atlas` database is created automatically on first `dbt build` (no manual step needed).
   3. **Settings → Tokens → Generate a service token.** Retain the value.
 - **Secrets**: `MOTHERDUCK_TOKEN`.
-- **Running dbt (Part 3+)**: `cd models && dbt run --profiles-dir . && dbt test --profiles-dir .`
+- **Running dbt (Part 3+)**: `cd models`, then optionally `dbt parse --target dev` as a fast connection/compile check (catches a bad profile or Jinja error in seconds, without waiting on the real build), then `dbt build --target dev` — builds seeds, staging views, and marts in dependency order and runs every test, including the two `real_data`-tagged volume/cardinality guards (see `docs/protein_atlas_data_source_manifest.md`, "Refresh checklist"). `dbt run --target dev` alone is not enough: it skips seeds, and `dim_protein`/`fact_protein_aa_composition` ref() them. Follow with `dbt docs generate --target dev` to regenerate the docs site locally against real data (the published site instead rebuilds from CI fixtures on every push to `main` — see `.github/workflows/dbt-docs.yml`).
 
 ---
 
