@@ -64,8 +64,12 @@ jobs:
 
       - name: dbt build (unit tests on Bronze stubs)
         # Builds every model from zero-row fixture Parquet, then runs all tests.
-        # Tests tagged real_data (volume + cardinality guards) require the live
-        # warehouse and run in the weekly dbt-prod workflow instead.
+        # Tests tagged real_data (volume + cardinality guards) need real row
+        # counts/shape, which zero-row fixtures can never satisfy, so they're
+        # excluded here. They still run like any other test in `dbt build
+        # --target dev` — no separate command needed — but nothing schedules
+        # that run automatically; see docs/protein_atlas_data_source_manifest.md,
+        # "Refresh checklist", for when to check their result.
         run: >
           uv run dbt build
           --project-dir models
