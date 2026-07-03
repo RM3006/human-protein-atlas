@@ -86,6 +86,7 @@ custom DAG-wiring beyond Dagster's automatic dependency inference from asset I/O
 | `apps/ui/render.py` | Presentation helpers (formatting story-card sections, cross-reference links, the atlas plot). |
 | `apps/ui/tour.py` | Stateful guided-tour sequence (`st.session_state`). |
 | `apps/ui/requirements.txt` | Deploy-only dependency subset (4 packages) for Streamlit Community Cloud's builder — kept in sync with `pyproject.toml`'s version constraints for `streamlit`/`plotly`/`duckdb`/`streamlit-searchbox`. |
+| `.github/workflows/dbt-docs.yml` | Builds the dbt project against the `docs` target (file-based DuckDB + Bronze fixtures, no MotherDuck credentials) and publishes `dbt docs generate`'s static site to GitHub Pages on every push to `main`. |
 
 ---
 
@@ -105,6 +106,11 @@ custom DAG-wiring beyond Dagster's automatic dependency inference from asset I/O
 - **Used**: `dbt-duckdb` targets MotherDuck (`md:atlas`); staging views are 1:1 with Bronze sources, Gold marts hold the star schema; `duckdb==1.5.2` is pinned.
 - **Considered**: a heavier managed warehouse (Snowflake/BigQuery) — explicitly out of scope per `SETUP.md`.
 - **Why**: MotherDuck's free tier is sufficient for ~20k-row dimensions and sub-million-row facts, and DuckDB's local-first model means the same SQL runs identically in CI (in-memory DuckDB + fixtures) and production (MotherDuck). The `1.5.2` pin exists because MotherDuck's server-side extension caps at that DuckDB version (as of 2026-05-31); `dbt-duckdb>=1.10` would otherwise pull `1.5.3` and fail to connect — re-evaluate the pin once MotherDuck upgrades. A **persistent** R2 secret was registered directly in MotherDuck (not just dbt's session) because session-scoped `SET s3_*` left other connections (the UI, ad-hoc queries) defaulting to AWS S3's `eu-central-1` and 404ing against the R2 bucket; the secret requires `REGION 'auto'`.
+
+### Public dbt docs site, built from CI fixtures rather than the live warehouse
+- **Used**: `.github/workflows/dbt-docs.yml` runs `dbt build` + `dbt docs generate` against a file-based DuckDB target (`docs`) loaded from the same zero-row Bronze fixtures CI tests against, then publishes the static site to GitHub Pages. Column names, types, descriptions, and lineage are accurate; row counts are not (they read 0, not the production ~20,431).
+- **Considered**: generating against `dev` (the real MotherDuck warehouse) so the catalog page shows real row counts.
+- **Why**: the workflow's output is a public webpage — loading `MOTHERDUCK_TOKEN` into a pipeline whose entire purpose is publishing public output is an avoidable credential-exposure surface for a cosmetic benefit (accurate row counts on a docs site). The `docs` target is file-based rather than `ci`'s `:memory:` specifically so `dbt build` and `dbt docs generate` — separate CLI invocations — share the same materialized relations; against `:memory:` the catalog step would introspect an empty database and every column's type would be missing from the site.
 
 ### Embeddings precomputed once, not on demand
 - **Used**: a Dagster asset batches all `dim_protein.sequence` rows (128 at a time) through a Modal-hosted ESM-2 `t33_650M` (`facebook/esm2_t33_650M_UR50D`, fp16, A10G GPU, model baked into the image at build time), then computes UMAP locally on CPU, and writes `fact_embedding`.

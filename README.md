@@ -3,7 +3,7 @@
 > A living atlas of every human protein — what it does, who it talks to, what goes wrong when it breaks — navigated by an AI that learned biology from sequence alone.
 
 <!-- MAINTAINED: links -->
-[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [Live demo](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/) · **Status**: Part 9 complete — v1 shipped
+[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [Live demo](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/) · [dbt docs](https://rm3006.github.io/human-protein-atlas/) · **Status**: Part 9 complete — v1 shipped
 <!-- /MAINTAINED -->
 
 <!-- MAINTAINED: hero -->
@@ -104,7 +104,7 @@ All sources are public and permissively licensed. Joined on UniProt accession.
 | [Open Targets](https://platform.opentargets.org/) | diseases + drug-target associations | CC0 |
 | [ChEMBL](https://www.ebi.ac.uk/chembl/) (v2) | quantitative drug bioactivity | CC-BY-SA 3.0 |
 
-See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_source_manifest.md) for fields, join keys, and refresh cadence.
+See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_source_manifest.md) for fields, join keys, and refresh cadence, or the [dbt docs site](https://rm3006.github.io/human-protein-atlas/) for column-level definitions and lineage across every model.
 <!-- /MAINTAINED -->
 
 ## Project structure
@@ -136,6 +136,7 @@ See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_sourc
 │   └── ui/                                  # Streamlit; queries MotherDuck directly
 ├── notebooks/                               # exploratory
 ├── .github/workflows/ci.yml                 # ruff + pyright + pytest on every PR
+├── .github/workflows/dbt-docs.yml           # publishes dbt docs to GitHub Pages on push to main
 ├── pyproject.toml
 └── .env.example
 ```

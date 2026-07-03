@@ -30,6 +30,10 @@ dagster_home/
 tmp*/
 *.tmp
 
+# dbt (models/.gitignore covers target/dbt_packages/logs; this covers the docs_build
+# duckdb file, which lands at whichever directory dbt was invoked from)
+docs_build.duckdb
+
 # OpenTofu / Terraform (.terraform.lock.hcl IS committed to pin providers)
 infra/**/.terraform/
 *.tfstate
