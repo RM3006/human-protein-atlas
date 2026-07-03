@@ -10,7 +10,5 @@ SELECT
     rna_tissue_distribution,
     subcellular_location,
     disease_involvement
-FROM read_parquet(
-    '{{ var("source_root") }}/hpa/{{ var("hpa_version") }}/hpa_proteome.parquet'
-)
+FROM {{ source('bronze', 'hpa') }}
 WHERE uniprot_accession IS NOT NULL

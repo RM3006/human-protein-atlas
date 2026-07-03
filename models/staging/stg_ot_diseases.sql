@@ -4,8 +4,6 @@
 SELECT
     id    AS efo_id,
     name  AS disease_name
-FROM read_parquet(
-    '{{ var("source_root") }}/opentargets/v{{ var("ot_version") }}/ot_diseases.parquet'
-)
+FROM {{ source('bronze', 'ot_diseases') }}
 WHERE id IS NOT NULL
   AND name IS NOT NULL

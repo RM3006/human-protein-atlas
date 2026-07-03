@@ -10,6 +10,4 @@ SELECT
     targetId        AS ensembl_gene_id,
     diseases        AS disease_ids,
     maxClinicalStage AS max_clinical_stage_raw
-FROM read_parquet(
-    '{{ var("source_root") }}/opentargets/v{{ var("ot_version") }}/ot_drugs.parquet'
-)
+FROM {{ source('bronze', 'ot_drugs') }}

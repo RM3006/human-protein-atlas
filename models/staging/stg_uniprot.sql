@@ -12,6 +12,4 @@ SELECT
     pfam_ids[1]                          AS pfam_id,
     ensembl_gene_ids[1]                  AS ensembl_gene_id,
     string_ids[1]                        AS string_protein_id
-FROM read_parquet(
-    '{{ var("source_root") }}/uniprot/v{{ var("uniprot_version") }}/uniprot_human_reviewed_raw.parquet'
-)
+FROM {{ source('bronze', 'uniprot') }}

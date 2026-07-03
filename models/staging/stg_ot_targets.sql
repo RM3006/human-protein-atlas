@@ -9,6 +9,4 @@ SELECT
     approvedSymbol                                                          AS gene_symbol,
     approvedName                                                            AS gene_name,
     list_filter(proteinIds, x -> x.source = 'uniprot_swissprot')[1].id     AS uniprot_accession
-FROM read_parquet(
-    '{{ var("source_root") }}/opentargets/v{{ var("ot_version") }}/ot_targets.parquet'
-)
+FROM {{ source('bronze', 'ot_targets') }}

@@ -6,6 +6,4 @@ SELECT
     uniprot_a,
     uniprot_b,
     combined_score
-FROM read_parquet(
-    '{{ var("source_root") }}/string/v{{ var("string_version") }}/string_interactions.parquet'
-)
+FROM {{ source('bronze', 'string') }}
