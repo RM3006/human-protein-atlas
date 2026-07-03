@@ -15,7 +15,7 @@
 
 ## What this is
 
-A multi-source human protein atlas built on a serverless data platform. Every reviewed human protein in UniProt (~20,000 entries) is embedded by Meta's ESM-2 language model, projected to a 2D map, and joined with interactions, tissue data, diseases, and drugs from four other public databases. The result is served through a Streamlit UI that queries the warehouse and vector index directly — no separate API tier. Story cards are written in plain English: hand-written narratives for the 100 most culturally important proteins, LLM-generated descriptions for the long tail, identical UI for both.
+A multi-source human protein atlas built on a serverless data platform. Every reviewed human protein in UniProt (~20,000 entries) is embedded by Meta's ESM-2 language model, projected to a 2D map, and joined with interactions, tissue data, diseases, and drugs from four other public databases. The result is served through a Streamlit UI that queries the warehouse directly — no separate API tier. Story cards are written in plain English: hand-written narratives for the 100 most culturally important proteins, LLM-generated descriptions for the long tail, identical UI for both.
 
 The project demonstrates end-to-end data engineering on a substantive domain: five public biology databases joined on a single anchor identifier, typed Python with strict CI, idempotent assets, no hardcoded secrets, schema tests on every join, and an editorial content tier invisible to the reader.
 

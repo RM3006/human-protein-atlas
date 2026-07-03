@@ -83,8 +83,8 @@ Tools installed on the development machine. One-time install.
 - **Secrets**: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_R2_ACCESS_KEY_ID`, `CLOUDFLARE_R2_SECRET_ACCESS_KEY`.
 
 ### C2. MotherDuck — the warehouse
-- **Why**: cloud-hosted DuckDB. Holds the modeled Silver/Gold tables (`dim_protein`, `dim_disease`, `dim_drug`, the fact tables). The API queries this in production.
-- **Used in**: Parts 3, 4, 5, 6 (dbt builds here; the API reads from here).
+- **Why**: cloud-hosted DuckDB. Holds the modeled Silver/Gold tables (`dim_protein`, `dim_disease`, `dim_drug`, the fact tables). The Streamlit app queries this in production.
+- **Used in**: Parts 3, 4, 5, 6 (dbt builds here; the Streamlit app reads from here).
 - **Cost**: free up to 10 GB. The project uses well under.
 - **Steps**:
   1. Registration at app.motherduck.com (Google or GitHub OAuth — no separate password).
