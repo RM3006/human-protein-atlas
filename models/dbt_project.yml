@@ -3,7 +3,7 @@ version: '1.0.0'
 profile: atlas
 config-version: 2
 
-model-paths: ["staging", "marts", "queries"]
+model-paths: ["staging", "marts"]
 seed-paths: ["seeds"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]

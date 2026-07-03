@@ -1,5 +1,13 @@
 -- Canonical story card query: returns one fully-populated row for any protein.
 -- Default accession is P01308 (insulin) — the Part 3 exit-criteria protein.
+-- Lives in analyses/, not staging/marts: this is a reference query the app's
+-- hand-port is checked against, not something the warehouse should ever hold
+-- as a live view (see the app's data.py docstring and ARCHITECTURE.md, "Bronze
+-- sources declared as passthrough views" for the same reasoning applied here
+-- in reverse — this one is deliberately NOT materialized). dbt still parses
+-- and compiles it on every `dbt compile`/`dbt docs generate`, so a `ref()`
+-- rename elsewhere in the project will break this file loudly instead of
+-- silently drifting from the mart schema it's built on.
 -- Usage: dbt show --select protein_story_card --vars '{accession: P53_HUMAN}'
 --
 -- top_interaction_partners, top_diseases, and approved_drugs are LIST(STRUCT),
