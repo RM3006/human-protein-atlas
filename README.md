@@ -3,7 +3,7 @@
 > A living atlas of every human protein — what it does, who it talks to, what goes wrong when it breaks — navigated by an AI that learned biology from sequence alone.
 
 <!-- MAINTAINED: links -->
-[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [Live demo](https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/) · [dbt docs](https://rm3006.github.io/human-protein-atlas/) · **Status**: Part 9 complete — v1 shipped
+[Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [dbt docs](https://rm3006.github.io/human-protein-atlas/) · **Status**: Part 9 complete — v1 shipped
 <!-- /MAINTAINED -->
 
 <!-- MAINTAINED: hero -->
