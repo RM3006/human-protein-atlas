@@ -18,7 +18,15 @@ jobs:
         run: pip install playwright
 
       - name: Install Chromium
-        run: playwright install --with-deps chromium
+        run: |
+          # `--with-deps` runs apt-get update, which fails hard if any repo
+          # baked into the runner image is unhealthy. The third-party Microsoft
+          # repos (packages.microsoft.com) periodically serve an invalid
+          # InRelease file and have nothing to do with Chromium's libraries —
+          # drop them first so a Microsoft mirror outage can't take this job
+          # down, as happened on 2026-07-07 ("NOSPLIT" clearsign error).
+          grep -rl packages.microsoft.com /etc/apt/sources.list.d/ | sudo xargs -r rm -f
+          playwright install --with-deps chromium
 
       - name: Load Streamlit app
         run: |
@@ -26,12 +34,34 @@ jobs:
           from playwright.sync_api import sync_playwright
 
           APP_URL = "https://human-protein-atlas-cqhrelt2uatfzhyt54udys.streamlit.app/"
+          EXPECTED_TITLE = "Protein Atlas"  # set by st.set_page_config in app.py
 
           with sync_playwright() as p:
               browser = p.chromium.launch()
               page = browser.new_page()
               page.goto(APP_URL, wait_until="load", timeout=60000)
-              page.wait_for_timeout(5000)  # give the WebSocket time to connect
-              print(f"loaded: {page.title()}")
+
+              # If the app has slept, Community Cloud serves a wrapper page whose
+              # title is a bare "Streamlit" and whose only content is a wake
+              # button. A plain load does NOT wake it — the button must be
+              # clicked. Without this the ping reports a false success while the
+              # app stays asleep (exactly what happened after the 07-07 failure).
+              wake = page.get_by_role("button", name="get this app back up")
+              if wake.count() > 0:
+                  wake.first.click()
+
+              # Poll (up to ~120s) for the real app to finish booting. Waking a
+              # slept app is not instant.
+              title = ""
+              for _ in range(24):
+                  title = page.title()
+                  if EXPECTED_TITLE in title:
+                      break
+                  page.wait_for_timeout(5000)
+
+              print(f"loaded: {title}")
               browser.close()
+              # Fail loudly if the real app never came up, instead of a false green.
+              if EXPECTED_TITLE not in title:
+                  raise SystemExit(f"app did not load — title was {title!r}")
           EOF
