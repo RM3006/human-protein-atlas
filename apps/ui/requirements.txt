@@ -4,7 +4,19 @@
 # (dagster, modal, umap-learn, dbt-duckdb, ...) that the UI never imports.
 # pyproject.toml / uv.lock remain the source of truth for local dev; keep
 # these versions in sync with the constraints there.
-streamlit>=1.40
-plotly>=5.24
+#
+# Versions are PINNED, not floated. On 2026-07-14 an unpinned reboot resolved to
+# pyarrow 25.0.0 on Python 3.14, which segfaulted the Streamlit process (SIGSEGV
+# — a native crash, not an app-level exception), taking the public app down with
+# a bare "Error running app" and no logs. pyarrow, numpy, and pandas are
+# transitive deps of streamlit (dataframe serialization via st.dataframe) that
+# the UI never imports directly, but they are the heavy C-extension libraries
+# that can segfault, so they are pinned explicitly here to make every Streamlit
+# Cloud reboot deterministic.
+streamlit==1.59.2
+plotly==6.9.0
 duckdb==1.5.2
-streamlit-searchbox>=0.1.24
+streamlit-searchbox==0.1.24
+pyarrow==24.0.0
+numpy==2.5.1
+pandas==3.0.3
