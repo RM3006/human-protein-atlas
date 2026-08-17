@@ -1,6 +1,6 @@
 # Protein Atlas
 
-> A living atlas of every human protein — what it does, who it talks to, what goes wrong when it breaks — navigated by an AI that learned biology from sequence alone.
+> A living atlas of every human protein: what it does, who it talks to, what goes wrong when it breaks. Navigated by an AI that taught itself biology from sequence alone.
 
 <!-- MAINTAINED: links -->
 [Architecture](./ARCHITECTURE.md) · [Roadmap](./ROADMAP.md) · [Setup](./SETUP.md) · [dbt docs](https://rm3006.github.io/human-protein-atlas/) · **Status**: Part 9 complete — v1 shipped
@@ -15,18 +15,18 @@
 
 ## What this is
 
-A multi-source human protein atlas built on a serverless data platform. Every reviewed human protein in UniProt (~20,000 entries) is embedded by Meta's ESM-2 language model, projected to a 2D map, and joined with interactions, tissue data, diseases, and drugs from four other public databases. The result is served through a Streamlit UI that queries the warehouse directly — no separate API tier. Story cards are written in plain English: hand-written narratives for the 100 most culturally important proteins, LLM-generated descriptions for the long tail, identical UI for both.
+A multi-source human protein atlas, built on a serverless data platform. Every reviewed human protein in UniProt — about 20,000 of them — gets embedded with Meta's ESM-2 language model, projected down to a 2D map, and joined with interaction, tissue, disease, and drug data from four other public databases. It's all served through a Streamlit UI that queries the warehouse directly, no separate API tier in between. Story cards read in plain English: the 100 most culturally recognizable proteins get hand-written narratives, everything else gets an LLM-generated version, and both look identical in the UI.
 
-The project demonstrates end-to-end data engineering on a substantive domain: five public biology databases joined on a single anchor identifier, typed Python with strict CI, idempotent assets, no hardcoded secrets, schema tests on every join, and an editorial content tier invisible to the reader.
+Underneath the UI, it's really an exercise in doing data engineering properly on a domain that matters: five public biology databases joined on one shared identifier, strictly typed Python enforced in CI, idempotent pipeline assets, no secrets checked into the repo, schema tests on every join, and an editorial layer the reader never notices.
 
 ## What it does
 
 <!-- MAINTAINED: features -->
 - Maps ~20,000 human proteins to a 2D atlas using ESM-2 `t33_650M` embeddings and UMAP.
 - Renders a plain-English story card for any protein: what it does, where in the body, who it talks to, what goes wrong when broken, which drugs target it.
-- Story-card cross-references are clickable: jump from a protein to its interaction partners or drug targets (e.g. insulin → its receptor INSR, where the insulin therapies live — drugs attach to the molecular target, not the ligand).
+- Cross-references inside story cards are clickable — jump straight from a protein to its interaction partners or drug targets. (Insulin links to its receptor INSR, for instance, because drugs target the receptor, not the hormone itself.)
 - Hand-written narratives for the top 100 culturally famous proteins (insulin, hemoglobin, EGFR, TP53, BRCA1, CFTR, etc.); LLM-generated rewrites for the remaining ~20,000.
-- Nearest-neighbor search by sequence — any protein sequence can be dropped in to find its closest matches in the human proteome.
+- Nearest-neighbor search by sequence — drop in any protein sequence and find its closest matches across the human proteome.
 - Searchable by gene symbol, UniProt accession, or protein name.
 - Per-protein amino acid composition tab: full sequence, plus its 20 amino acids ranked by abundance and colored by side-chain chemistry, with essential-amino-acid markers and tooltips.
 - 90-second guided tour for first-time visitors.
@@ -144,8 +144,8 @@ See [docs/protein_atlas_data_source_manifest.md](./docs/protein_atlas_data_sourc
 
 ## Quickstart
 
-Prerequisites — accounts, tokens, and local tools — are listed in
-[SETUP.md](./SETUP.md). Copy `.env.example` to `.env.local` and fill in your
+Prerequisites (accounts, tokens, local tools) are listed in
+[SETUP.md](./SETUP.md). Copy `.env.example` to `.env.local`, fill in your
 secrets, then:
 
 ```bash
